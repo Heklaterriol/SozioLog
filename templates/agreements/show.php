@@ -94,3 +94,11 @@ $isPastReview = $reviewDate && $reviewDate < time();
         </div>
     </div>
 <?php endif; ?>
+
+<!-- Versionshistorie-Link -->
+<div style="display:flex;justify-content:flex-end">
+    <a href="<?= $base ?>/agreements/<?= $agreement['id'] ?>/versions"
+       class="btn btn--ghost btn--sm">
+        <i class="ti ti-history" aria-hidden="true"></i> Versionshistorie ansehen
+    </a>
+</div>

@@ -35,6 +35,13 @@
         <div class="stat-card__label">Meetings</div>
     </div>
     <div class="stat-card">
+        <div class="stat-card__icon" style="background:var(--c-warning-lt);color:var(--c-warning)">
+            <i class="ti ti-arrow-right-circle" aria-hidden="true"></i>
+        </div>
+        <div class="stat-card__value"><?= $stats['delegations'] ?></div>
+        <div class="stat-card__label">Aktive Delegationen</div>
+    </div>
+    <div class="stat-card">
         <div class="stat-card__icon" style="background:var(--c-error-lt);color:var(--c-error)">
             <i class="ti ti-bolt" aria-hidden="true"></i>
         </div>

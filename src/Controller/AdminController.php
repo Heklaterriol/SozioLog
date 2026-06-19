@@ -29,6 +29,7 @@ class AdminController extends BaseController
             'agreements'  => (int) $this->db->fetchValue("SELECT COUNT(*) FROM agreements"),
             'meetings'    => (int) $this->db->fetchValue("SELECT COUNT(*) FROM meetings"),
             'tensions'    => (int) $this->db->fetchValue("SELECT COUNT(*) FROM tensions"),
+            'delegations' => (int) $this->db->fetchValue("SELECT COUNT(*) FROM delegations WHERE status = 'active'"),
         ];
 
         $this->render('admin/index', [
@@ -176,6 +177,28 @@ class AdminController extends BaseController
             'members'     => $this->db->fetchAll(
                 "SELECT id, name, email, is_admin, created_at FROM members ORDER BY name"
             ),
+            'delegations' => $this->db->fetchAll("
+                SELECT d.*,
+                       fc.name AS from_circle_name,
+                       tc.name AS to_circle_name,
+                       rr.name AS rep_link_name,
+                       dr.name AS del_link_name
+                FROM   delegations d
+                JOIN   circles fc ON d.from_circle = fc.id
+                JOIN   circles tc ON d.to_circle   = tc.id
+                LEFT JOIN roles rr ON d.rep_link_role = rr.id
+                LEFT JOIN roles dr ON d.del_link_role = dr.id
+                ORDER BY fc.name, tc.name
+            "),
+            'agreement_versions' => $this->db->fetchAll("
+                SELECT v.*, a.title AS agreement_title, c.name AS circle_name,
+                       m.name AS changed_by_name
+                FROM   agreement_versions v
+                JOIN   agreements a ON v.agreement_id = a.id
+                JOIN   circles    c ON a.circle_id    = c.id
+                LEFT JOIN members m ON v.changed_by   = m.id
+                ORDER BY v.agreement_id, v.version DESC
+            "),
         ];
     }
 
@@ -362,6 +385,55 @@ class AdminController extends BaseController
             $html .= '</tbody></table>';
         } else {
             $html .= '<p class="empty">Keine Mitglieder vorhanden.</p>';
+        }
+
+        // ---- Delegationen ----
+        $html .= '<h2>Delegationen (' . count($data['delegations']) . ')</h2>';
+        if ($data['delegations']) {
+            $html .= '<table><thead><tr>
+                <th>Von (Anker)</th><th>An (Delegiert)</th><th>Rep-Link</th><th>Del-Link</th><th>Status</th><th>Seit</th>
+            </tr></thead><tbody>';
+            foreach ($data['delegations'] as $d) {
+                $sc    = $d['status'] === 'active' ? 'active' : 'expired';
+                $label = $d['status'] === 'active' ? 'Aktiv' : 'Beendet';
+                $html .= '<tr>
+                    <td><b>' . htmlspecialchars($d['from_circle_name']) . '</b></td>
+                    <td>' . htmlspecialchars($d['to_circle_name']) . '</td>
+                    <td>' . htmlspecialchars($d['rep_link_name'] ?? '—') . '</td>
+                    <td>' . htmlspecialchars($d['del_link_name'] ?? '—') . '</td>
+                    <td><span class="badge ' . $sc . '">' . $label . '</span></td>
+                    <td>' . ($d['started_at'] ? date('d.m.Y', strtotime($d['started_at'])) : '—') . '</td>
+                </tr>';
+                if ($d['description']) {
+                    $html .= '<tr><td colspan="6" style="padding-left:10pt;font-size:8.5pt;color:#5C574E">
+                        ' . htmlspecialchars(mb_substr($d['description'], 0, 200)) . '
+                    </td></tr>';
+                }
+            }
+            $html .= '</tbody></table>';
+        } else {
+            $html .= '<p class="empty">Keine Delegationen vorhanden.</p>';
+        }
+
+        // ---- Versionshistorie ----
+        if (!empty($data['agreement_versions'])) {
+            $html .= '<h2>Vereinbarungs-Versionshistorie (' . count($data['agreement_versions']) . ' Einträge)</h2>';
+            $html .= '<table><thead><tr>
+                <th>Vereinbarung</th><th>Kreis</th><th>Version</th><th>Status</th><th>Geändert von</th><th>Gespeichert</th>
+            </tr></thead><tbody>';
+            foreach ($data['agreement_versions'] as $v) {
+                $sc    = htmlspecialchars($v['status']);
+                $badge = '<span class="badge ' . $sc . '">' . $sc . '</span>';
+                $html .= '<tr>
+                    <td>' . htmlspecialchars($v['agreement_title']) . '</td>
+                    <td>' . htmlspecialchars($v['circle_name']) . '</td>
+                    <td style="font-family:monospace">v' . $v['version'] . '</td>
+                    <td>' . $badge . '</td>
+                    <td>' . htmlspecialchars($v['changed_by_name'] ?? '—') . '</td>
+                    <td>' . date('d.m.Y H:i', strtotime($v['created_at'])) . '</td>
+                </tr>';
+            }
+            $html .= '</tbody></table>';
         }
 
         return $html;

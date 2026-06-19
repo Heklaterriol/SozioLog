@@ -62,14 +62,50 @@ class DashboardController extends BaseController
             LIMIT 10
         ");
 
+        // Aktive Delegationen mit unbesetzten Link-Rollen
+        $unfilledLinks = $this->db->fetchAll("
+            SELECT d.id,
+                   fc.name AS from_circle_name,
+                   tc.name AS to_circle_name,
+                   CASE
+                       WHEN d.rep_link_role IS NOT NULL
+                            AND NOT EXISTS (
+                                SELECT 1 FROM role_assignments ra
+                                WHERE ra.role_id = d.rep_link_role AND ra.end_date IS NULL
+                            ) THEN 'Rep-Link'
+                       WHEN d.del_link_role IS NOT NULL
+                            AND NOT EXISTS (
+                                SELECT 1 FROM role_assignments ra
+                                WHERE ra.role_id = d.del_link_role AND ra.end_date IS NULL
+                            ) THEN 'Del-Link'
+                       ELSE NULL
+                   END AS missing_link
+            FROM   delegations d
+            JOIN   circles fc ON d.from_circle = fc.id
+            JOIN   circles tc ON d.to_circle   = tc.id
+            WHERE  d.status = 'active'
+              AND (
+                  (d.rep_link_role IS NOT NULL AND NOT EXISTS (
+                      SELECT 1 FROM role_assignments ra WHERE ra.role_id = d.rep_link_role AND ra.end_date IS NULL
+                  ))
+                  OR
+                  (d.del_link_role IS NOT NULL AND NOT EXISTS (
+                      SELECT 1 FROM role_assignments ra WHERE ra.role_id = d.del_link_role AND ra.end_date IS NULL
+                  ))
+              )
+            ORDER BY fc.name, tc.name
+            LIMIT 8
+        ");
+
         $this->render('dashboard/index', [
-            'pageTitle'       => 'Dashboard',
-            'stats'           => $stats,
-            'upcomingMeetings'=> $upcomingMeetings,
-            'reviewDue'       => $reviewDue,
-            'openTensions'    => $openTensions,
-            'unfilledRoles'   => $unfilledRoles,
-            'csrf'            => $this->csrfToken(),
+            'pageTitle'        => 'Dashboard',
+            'stats'            => $stats,
+            'upcomingMeetings' => $upcomingMeetings,
+            'reviewDue'        => $reviewDue,
+            'openTensions'     => $openTensions,
+            'unfilledRoles'    => $unfilledRoles,
+            'unfilledLinks'    => $unfilledLinks,
+            'csrf'             => $this->csrfToken(),
         ]);
     }
 }

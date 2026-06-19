@@ -110,6 +110,9 @@ $roleTypeLabels = [
     <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab(this,'tab-tensions')">
         <i class="ti ti-bolt" aria-hidden="true"></i> Spannungen (<?= count($tensions) ?>)
     </button>
+    <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab(this,'tab-delegations')">
+        <i class="ti ti-arrow-right-circle" aria-hidden="true"></i> Delegationen
+    </button>
     <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab(this,'tab-members')">
         <i class="ti ti-users" aria-hidden="true"></i> Mitglieder (<?= count($members) ?>)
     </button>
@@ -269,6 +272,72 @@ $roleTypeLabels = [
         <div class="card__footer">
             <a href="<?= $base ?>/circles/<?= $circle['id'] ?>/tensions" class="btn btn--ghost btn--sm">
                 Alle Spannungen <i class="ti ti-arrow-right" aria-hidden="true"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- TAB: Delegationen -->
+<div id="tab-delegations" class="tab-panel" role="tabpanel">
+    <div class="card">
+        <div class="card__header">
+            <span class="card__title"><i class="ti ti-arrow-right-circle" aria-hidden="true"></i> Delegationen</span>
+            <?php if (!empty($currentUser['is_admin'])): ?>
+                <a href="<?= $base ?>/delegations/new?from_circle=<?= $circle['id'] ?>"
+                   class="btn btn--primary btn--sm">
+                    <i class="ti ti-plus" aria-hidden="true"></i> Neue Delegation
+                </a>
+            <?php endif; ?>
+        </div>
+        <?php
+        // Delegationen dieses Kreises live nachladen
+        $circleDelegations = (new \Logbuch\Model\DelegationModel())->findByCircle($circle['id']);
+        ?>
+        <div class="card__body--flush">
+            <?php if (empty($circleDelegations)): ?>
+                <div class="empty-state">
+                    <i class="ti ti-arrow-right-circle" aria-hidden="true"></i>
+                    <span>Keine Delegationen für diesen Kreis</span>
+                </div>
+            <?php else: ?>
+                <table class="table">
+                    <thead>
+                        <tr><th>Richtung</th><th>Kreis</th><th>Rep-Link</th><th>Del-Link</th><th>Status</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($circleDelegations as $d):
+                            $isFrom = $d['from_circle'] == $circle['id'];
+                        ?>
+                            <tr>
+                                <td>
+                                    <?php if ($isFrom): ?>
+                                        <span class="badge badge--review" title="Dieser Kreis delegiert">↓ delegiert an</span>
+                                    <?php else: ?>
+                                        <span class="badge badge--open" title="Dieser Kreis empfängt">↑ empfängt von</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="fw-600">
+                                    <a href="<?= $base ?>/circles/<?= $isFrom ? $d['to_circle'] : $d['from_circle'] ?>">
+                                        <?= htmlspecialchars($isFrom ? $d['to_circle_name'] : $d['from_circle_name']) ?>
+                                    </a>
+                                </td>
+                                <td class="text-sm"><?= htmlspecialchars($d['rep_link_name'] ?? '—') ?></td>
+                                <td class="text-sm"><?= htmlspecialchars($d['del_link_name'] ?? '—') ?></td>
+                                <td><span class="badge badge--<?= $d['status'] === 'active' ? 'active' : 'expired' ?>"><?= $d['status'] === 'active' ? 'Aktiv' : 'Beendet' ?></span></td>
+                                <td>
+                                    <a href="<?= $base ?>/delegations/<?= $d['id'] ?>" class="btn btn--ghost btn--sm">
+                                        <i class="ti ti-eye" aria-hidden="true"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+        <div class="card__footer">
+            <a href="<?= $base ?>/delegations" class="btn btn--ghost btn--sm">
+                Alle Delegationen <i class="ti ti-arrow-right" aria-hidden="true"></i>
             </a>
         </div>
     </div>

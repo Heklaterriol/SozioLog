@@ -6,6 +6,7 @@ use Logbuch\Model\RoleModel;
 use Logbuch\Model\AgreementModel;
 use Logbuch\Model\MeetingModel;
 use Logbuch\Model\TensionModel;
+use Logbuch\Model\DelegationModel;
 
 /**
  * CircleController — CRUD für Kreise
@@ -41,12 +42,12 @@ class CircleController extends BaseController
             $this->redirect('/circles');
         }
 
-        $roles      = (new RoleModel())->findByCircle($circle['id']);
-        $agreements = (new AgreementModel())->findByCircle($circle['id'], activeOnly: true);
-        $meetings   = (new MeetingModel())->findByCircle($circle['id'], limit: 5);
-        $tensions   = (new TensionModel())->findByCircle($circle['id'], status: 'open');
-        $children   = $this->circles->findChildren($circle['id']);
-        $members    = $this->circles->findMembers($circle['id']);
+        $roles       = (new RoleModel())->findByCircle($circle['id']);
+        $agreements  = (new AgreementModel())->findByCircle($circle['id'], activeOnly: true);
+        $meetings    = (new MeetingModel())->findByCircle($circle['id'], limit: 5);
+        $tensions    = (new TensionModel())->findByCircle($circle['id'], status: 'open');
+        $children    = $this->circles->findChildren($circle['id']);
+        $members     = $this->circles->findMembers($circle['id']);
 
         $this->render('circles/show', [
             'pageTitle'  => $circle['name'],

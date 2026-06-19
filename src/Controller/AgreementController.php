@@ -148,6 +148,7 @@ class AgreementController extends BaseController
         $agreement = $this->agreements->findById($id);
         if (!$agreement) { $this->flash('error', 'Vereinbarung nicht gefunden.'); $this->redirect('/circles'); }
 
+        $user = $this->currentUser();
         $data = [
             'title'       => $this->inputString('title'),
             'driver'      => $this->inputString('driver'),
@@ -155,6 +156,9 @@ class AgreementController extends BaseController
             'agreed_at'   => $this->inputDate('agreed_at') ?? $agreement['agreed_at'],
             'review_date' => $this->inputDate('review_date'),
             'status'      => $this->inputString('status') ?: 'active',
+            // Versionsmeta — wird von AgreementModel::update() genutzt
+            'changed_by'  => $user['id'] ?? null,
+            'change_note' => $this->inputString('change_note'),
         ];
 
         $errors = $this->agreements->validate($data);
@@ -162,11 +166,13 @@ class AgreementController extends BaseController
         if ($errors) {
             $circles  = (new CircleModel())->findAll();
             $meetings = (new MeetingModel())->findByCircle($agreement['circle_id'], 50);
+            $versions = $this->agreements->findVersions($id);
             $this->render('agreements/form', [
                 'pageTitle' => 'Vereinbarung bearbeiten',
                 'agreement' => array_merge($agreement, $data),
                 'circles'   => $circles,
                 'meetings'  => $meetings,
+                'versions'  => $versions,
                 'errors'    => $errors,
                 'csrf'      => $this->csrfToken(),
             ]);
@@ -174,7 +180,63 @@ class AgreementController extends BaseController
         }
 
         $this->agreements->update($id, $data);
-        $this->flash('success', 'Vereinbarung aktualisiert.');
+        $this->flash('success', 'Vereinbarung aktualisiert (Version gespeichert).');
+        $this->redirect('/agreements/' . $id);
+    }
+
+    /** GET /agreements/{id}/versions */
+    public function versions(array $params): void
+    {
+        $id        = (int) $params['id'];
+        $agreement = $this->agreements->findById($id);
+        if (!$agreement) { $this->flash('error', 'Vereinbarung nicht gefunden.'); $this->redirect('/circles'); }
+
+        $versions = $this->agreements->findVersions($id);
+
+        $this->render('agreements/versions', [
+            'pageTitle' => 'Versionshistorie: ' . $agreement['title'],
+            'agreement' => $agreement,
+            'versions'  => $versions,
+            'csrf'      => $this->csrfToken(),
+        ]);
+    }
+
+    /** GET /agreements/{id}/versions/{version} */
+    public function showVersion(array $params): void
+    {
+        $id        = (int) $params['id'];
+        $versionNr = (int) $params['version'];
+        $agreement = $this->agreements->findById($id);
+        if (!$agreement) { $this->flash('error', 'Vereinbarung nicht gefunden.'); $this->redirect('/circles'); }
+
+        $version = $this->agreements->findVersion($id, $versionNr);
+        if (!$version) { $this->flash('error', 'Version nicht gefunden.'); $this->redirect('/agreements/' . $id . '/versions'); }
+
+        $this->render('agreements/version_show', [
+            'pageTitle' => 'Version ' . $versionNr . ': ' . $agreement['title'],
+            'agreement' => $agreement,
+            'version'   => $version,
+            'csrf'      => $this->csrfToken(),
+        ]);
+    }
+
+    /** POST /agreements/{id}/versions/{version}/restore */
+    public function restoreVersion(array $params): void
+    {
+        $this->requireAdmin();
+        $this->verifyCsrf();
+
+        $id        = (int) $params['id'];
+        $versionNr = (int) $params['version'];
+        $user      = $this->currentUser();
+
+        $ok = $this->agreements->restoreVersion($id, $versionNr, $user['id'] ?? null);
+
+        if ($ok) {
+            $this->flash('success', "Version {$versionNr} wurde wiederhergestellt. Der vorherige Stand ist als neue Version gespeichert.");
+        } else {
+            $this->flash('error', 'Version konnte nicht wiederhergestellt werden.');
+        }
         $this->redirect('/agreements/' . $id);
     }
 }

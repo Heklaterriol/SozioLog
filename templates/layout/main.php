@@ -24,10 +24,11 @@
     $base        = rtrim($config['app']['base_url'], '/');
 
     $navItems = [
-        ['href' => '/',        'icon' => 'ti-layout-dashboard', 'label' => 'Dashboard'],
-        ['href' => '/circles', 'icon' => 'ti-circle',           'label' => 'Kreise'],
-        ['href' => '/members', 'icon' => 'ti-users',            'label' => 'Mitglieder'],
-        ['href' => '/admin',   'icon' => 'ti-settings',         'label' => 'Admin',    'admin' => true],
+        ['href' => '/',            'icon' => 'ti-layout-dashboard', 'label' => 'Dashboard'],
+        ['href' => '/circles',     'icon' => 'ti-circle',           'label' => 'Kreise'],
+        ['href' => '/delegations', 'icon' => 'ti-arrow-right-circle','label' => 'Delegationen'],
+        ['href' => '/members',     'icon' => 'ti-users',            'label' => 'Mitglieder'],
+        ['href' => '/admin',       'icon' => 'ti-settings',         'label' => 'Admin', 'admin' => true],
     ];
     ?>
 

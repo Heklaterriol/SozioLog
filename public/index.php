@@ -129,6 +129,22 @@ $router->get('/login',                        'Auth@loginForm');
 $router->post('/login',                       'Auth@login');
 $router->post('/logout',                      'Auth@logout');
 
+// Vereinbarungs-Versionen
+$router->get('/agreements/{id}/versions',                        'Agreement@versions');
+$router->get('/agreements/{id}/versions/{version}',              'Agreement@showVersion');
+$router->post('/agreements/{id}/versions/{version}/restore',     'Agreement@restoreVersion');
+
+// Delegationen
+$router->get('/delegations',                  'Delegation@index');
+$router->get('/delegations/new',              'Delegation@create');
+$router->post('/delegations',                 'Delegation@store');
+$router->get('/delegations/{id}',             'Delegation@show');
+$router->get('/delegations/{id}/edit',        'Delegation@edit');
+$router->post('/delegations/{id}',            'Delegation@update');
+$router->post('/delegations/{id}/end',        'Delegation@end');
+$router->post('/delegations/{id}/delete',     'Delegation@delete');
+$router->get('/api/delegations/roles',        'Delegation@rolesForCircles');
+
 // Admin
 $router->get('/admin',                        'Admin@index');
 $router->post('/admin',                       'Admin@update');

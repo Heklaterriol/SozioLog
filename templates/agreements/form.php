@@ -121,6 +121,23 @@ function agCls(array $errors, string $field): string {
                 </select>
             </div>
 
+            <?php if ($isEdit): ?>
+                <div class="form-field" style="padding:var(--sp-3) var(--sp-4);background:var(--c-bg);
+                            border-radius:var(--r-md);border:1px solid var(--c-border)">
+                    <label class="form-label" for="change_note">
+                        <i class="ti ti-history" aria-hidden="true" style="color:var(--c-accent)"></i>
+                        Änderungsgrund <span class="text-muted" style="font-weight:400">(optional)</span>
+                    </label>
+                    <input type="text" id="change_note" name="change_note" class="form-input"
+                           placeholder="z.B. Review nach 6 Monaten, Präzisierung nach Feedback …"
+                           value="<?= htmlspecialchars($agreement['change_note'] ?? '') ?>">
+                    <span class="form-hint">
+                        Beim Speichern wird der aktuelle Stand automatisch als Version gesichert.
+                        <a href="<?= $base ?>/agreements/<?= $agreement['id'] ?>/versions">Versionshistorie ansehen</a>
+                    </span>
+                </div>
+            <?php endif; ?>
+
             <div class="form-actions">
                 <button type="submit" class="btn btn--primary">
                     <i class="ti ti-device-floppy" aria-hidden="true"></i>

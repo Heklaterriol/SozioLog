@@ -217,3 +217,49 @@ $base = rtrim($config['app']['base_url'], '/');
     </div>
 
 </div>
+
+<!-- 3. Zeile: Delegations-Warnungen -->
+<?php if (!empty($unfilledLinks)): ?>
+<div class="card">
+    <div class="card__header">
+        <span class="card__title">
+            <i class="ti ti-alert-triangle" aria-hidden="true" style="color:var(--c-warning)"></i>
+            Delegationen mit unbesetzten Link-Rollen
+        </span>
+        <a href="<?= $base ?>/delegations" class="btn btn--ghost btn--sm">Alle Delegationen</a>
+    </div>
+    <div class="card__body--flush">
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Von</th>
+                        <th>An</th>
+                        <th>Fehlende Rolle</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($unfilledLinks as $d): ?>
+                        <tr>
+                            <td class="text-sm"><?= htmlspecialchars($d['from_circle_name']) ?></td>
+                            <td class="text-sm fw-600"><?= htmlspecialchars($d['to_circle_name']) ?></td>
+                            <td>
+                                <span class="badge badge--<?= $d['missing_link'] === 'Rep-Link' ? 'review' : 'open' ?>">
+                                    <?= htmlspecialchars($d['missing_link']) ?> unbesetzt
+                                </span>
+                            </td>
+                            <td>
+                                <a href="<?= $base ?>/delegations/<?= $d['id'] ?>"
+                                   class="btn btn--ghost btn--sm">
+                                    <i class="ti ti-arrow-right" aria-hidden="true"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
