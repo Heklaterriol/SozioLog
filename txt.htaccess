@@ -1,0 +1,19 @@
+# Direktzugriff auf alle Verzeichnisse außer public/ sperren
+Options -Indexes
+
+# Alles auf public/ umleiten (falls DocumentRoot nicht auf public/ zeigt)
+# Andernfalls diese Datei weglassen und DocumentRoot direkt auf public/ setzen.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Wenn Request nicht in public/ landet, dorthin weiterleiten
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Sperrt den direkten Zugriff auf sensible Dateien und Ordner
+<FilesMatch "\.(sql|env|log|sh|bak|lock)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>

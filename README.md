@@ -1,28 +1,35 @@
 # Soziokratisches Logbuch
 
-Ein webbasiertes Logbuch für Organisationen, die nach **Sociocracy 3.0 (S3)** arbeiten.
+Webbasiertes Logbuch für Organisationen nach **Sociocracy 3.0 (S3)**.  
+PHP 8.1+ · MySQL 8+ · Apache 2.4+ · kein Framework, kein Composer-Pflicht
 
 ---
 
 ## Funktionsumfang
 
-- **Kreisstruktur** — hierarchische Über-/Unterkreise mit Treiber, Domäne, Zweck
-- **Rollen** — Rollenbeschreibungen inkl. Accountabilities, gewählte Rollen, Rollenverlauf
-- **Vereinbarungen** — Beschlüsse mit Review-Datum, Status, Verlinkung zum Meeting
-- **Meetings** — Protokolle mit Agenda-Punkten, Teilnehmenden, Moderator & Protokollant
-- **Spannungen** — Eingabe, Bearbeitung, Auflösung via Vereinbarung
-- **Dashboard** — Kennzahlen, anstehende Meetings, fällige Reviews, unbesetzte Rollen
-- **CSRF-Schutz**, Session-Auth, Admin-Rollen
+| Modul | Funktionen |
+|---|---|
+| **Kreise** | Hierarchische Struktur (Über-/Unterkreise), Treiber, Domäne, Zweck, Archivierung |
+| **Rollen** | Rollenbeschreibung mit Accountabilities, Rollentypen (Rep-Link, Del-Link, Wahl …), Belegungs­verlauf |
+| **Vereinbarungen** | Volltext, Treiber, Status, Review-Datum, Meeting-Verknüpfung |
+| **Meetings** | Protokoll mit Agenda-Punkten, Teilnehmenden, Moderator·in & Protokollant·in |
+| **Spannungen** | Einreichen, Status-Workflow, Auflösung via Vereinbarung |
+| **Dashboard** | Kennzahlen, anstehende Meetings, Review-fällige Vereinbarungen, unbesetzte Rollen |
+| **Mitglieder** | Benutzerverwaltung mit Admin-Rollen, Passwort-Hashing |
+| **Export** | JSON-Dump (sofort) · PDF-Logbuch via mPDF (optional) |
+
+**Sicherheit:** CSRF-Schutz auf allen POST-Formularen, Session-Auth, Prepared Statements (PDO), Security-Header per `.htaccess`
 
 ---
 
 ## Voraussetzungen
 
-| Komponente | Version    |
-|------------|------------|
-| PHP        | ≥ 8.1      |
-| MySQL      | ≥ 8.0 (oder MariaDB ≥ 10.5) |
-| Apache     | ≥ 2.4 mit `mod_rewrite` |
+| Komponente | Version |
+|---|---|
+| PHP | ≥ 8.1 |
+| MySQL / MariaDB | ≥ 8.0 / ≥ 10.5 |
+| Apache | ≥ 2.4 mit `mod_rewrite` |
+| Composer | optional (nur für PDF-Export via mPDF) |
 
 ---
 
@@ -30,12 +37,12 @@ Ein webbasiertes Logbuch für Organisationen, die nach **Sociocracy 3.0 (S3)** a
 
 ### 1. Dateien hochladen
 
-Lade das gesamte Projektverzeichnis auf deinen Server.  
-Idealerweise zeigt der **DocumentRoot** direkt auf `public/`.
+Lade das Projektverzeichnis auf deinen Server.  
+**Empfehlung:** `DocumentRoot` direkt auf `public/` setzen.
 
 ```
 /var/www/logbuch/
-├── public/          ← DocumentRoot hier
+├── public/          ← DocumentRoot
 │   ├── index.php
 │   ├── .htaccess
 │   └── assets/
@@ -64,9 +71,10 @@ mysql -u logbuch_user -p logbuch < database/schema.sql
 
 ```bash
 cp config/config.php config/config.local.php
+nano config/config.local.php
 ```
 
-`config/config.local.php` bearbeiten:
+Mindest-Anpassungen:
 
 ```php
 return [
@@ -77,7 +85,8 @@ return [
         'pass' => 'sicheres_passwort',
     ],
     'app' => [
-        'base_url' => 'https://logbuch.meineorganisation.org',
+        'name'     => 'Meine Organisation',
+        'base_url' => 'https://logbuch.example.org',
         'debug'    => false,
     ],
 ];
@@ -85,18 +94,24 @@ return [
 
 ### 4. Admin-Passwort setzen
 
-Das Schema legt einen Platzhalter-Admin an. Passwort-Hash erzeugen:
-
-```php
+```bash
+# Hash erzeugen:
 php -r "echo password_hash('mein_passwort', PASSWORD_BCRYPT);"
 ```
 
-In der Datenbank aktualisieren:
-
 ```sql
-UPDATE members SET password_hash = '$2y$12$...' WHERE email = 'admin@example.org';
-UPDATE members SET email = 'echte@email.org' WHERE id = 1;
+UPDATE members SET password_hash = '$2y$12$...' WHERE id = 1;
+UPDATE members SET email = 'admin@meineorg.de'  WHERE id = 1;
 ```
+
+### 5. PDF-Export (optional)
+
+```bash
+cd /pfad/zum/logbuch
+composer require mpdf/mpdf
+```
+
+Danach ist der «PDF herunterladen»-Button unter `/admin` aktiv.
 
 ---
 
@@ -105,63 +120,79 @@ UPDATE members SET email = 'echte@email.org' WHERE id = 1;
 ```
 logbuch/
 ├── assets/
-│   ├── css/app.css          Alle Styles (Design-Tokens, Layout, Komponenten)
-│   └── js/app.js            Tabs, Flash, dynamische Listen
+│   ├── css/app.css              Design-System (CSS Custom Properties, alle Komponenten)
+│   └── js/app.js               Tab-Umschaltung, Flash-Auto-close, Textarea-Resize
 ├── config/
-│   ├── config.php           Standardkonfiguration
-│   └── config.local.php     Lokale Überschreibung (nicht ins Repo!)
+│   ├── config.php              Standard-Konfiguration
+│   └── config.local.php        Lokale Überschreibung — NICHT ins Repository!
 ├── database/
-│   └── schema.sql           Datenbankschema mit allen 9 Tabellen
+│   └── schema.sql              9 Tabellen mit FKs, Indizes, ENUMs, Seed-Admin
 ├── public/
-│   ├── index.php            Front-Controller (Autoloader, Router, Session)
-│   └── .htaccess            Pretty URLs + Security-Header
+│   ├── index.php               Front-Controller (Autoloader, Session, Router)
+│   └── .htaccess               Pretty URLs + Security-Header
 ├── src/
-│   ├── Database.php         PDO-Singleton mit Helfer-Methoden
-│   ├── Router.php           URL-Dispatcher mit {platzhalter}-Support
+│   ├── Database.php            PDO-Singleton (fetchAll, fetchOne, insert, transaction …)
+│   ├── Router.php              URL-Dispatcher mit {platzhalter}-Support
 │   ├── Controller/
-│   │   ├── BaseController.php
-│   │   ├── AuthController.php
+│   │   ├── BaseController.php  render(), redirect(), flash(), csrf(), currentUser()
+│   │   ├── AuthController.php  Login / Logout
 │   │   ├── DashboardController.php
 │   │   ├── CircleController.php
 │   │   ├── MeetingController.php
-│   │   └── ...              (Role, Agreement, Tension, Member, Admin)
+│   │   ├── AgreementController.php
+│   │   ├── RoleController.php
+│   │   ├── TensionController.php
+│   │   ├── MemberController.php
+│   │   └── AdminController.php  + JSON/PDF-Export
 │   ├── Middleware/
 │   │   └── AuthMiddleware.php
 │   └── Model/
 │       ├── CircleModel.php
 │       ├── MeetingModel.php
-│       └── Models.php       (Agreement, Role, Tension, Member)
+│       ├── AgreementModel.php
+│       ├── RoleModel.php
+│       ├── TensionModel.php
+│       └── MemberModel.php
 └── templates/
-    ├── layout/
-    │   ├── main.php         Sidebar + Flash + Content-Wrapper
-    │   └── bare.php         Login-Seite ohne Sidebar
+    ├── layout/main.php          Sidebar-Layout
+    ├── layout/bare.php          Login-Seite (ohne Sidebar)
     ├── auth/login.php
     ├── dashboard/index.php
-    ├── circles/             index.php, form.php, show.php
-    ├── meetings/            index.php, form.php, show.php
-    ├── agreements/          index.php, form.php, show.php
-    ├── roles/               index.php, form.php, show.php
-    ├── tensions/            index.php, form.php, show.php
-    └── members/             index.php, form.php, show.php
+    ├── circles/                 index · show · form
+    ├── roles/                   index · show · form
+    ├── agreements/              index · show · form
+    ├── meetings/                index · show · form
+    ├── tensions/                index · show · form
+    ├── members/                 index · show · form
+    └── admin/index.php
 ```
 
 ---
 
-## Noch fehlende Controller/Templates
+## URL-Übersicht
 
-Die folgenden Dateien sind als Stubs vorbereitet (Modelle vorhanden) und können nach gleichem Muster ausgefüllt werden:
-
-- `RoleController` + Templates `roles/`
-- `AgreementController` + Templates `agreements/`
-- `TensionController` + Templates `tensions/`
-- `MemberController` + Templates `members/`
-- `AdminController` + Templates `admin/`
+| URL | Beschreibung |
+|---|---|
+| `/` | Dashboard |
+| `/login` | Anmelden |
+| `/circles` | Kreisbaum |
+| `/circles/{id}` | Kreis-Detail (Tabs: Rollen, Vereinbarungen, Meetings, Spannungen, Mitglieder) |
+| `/circles/{id}/roles` | Rollen eines Kreises |
+| `/roles/{id}` | Rollen-Detail + Zuweisung |
+| `/circles/{id}/agreements` | Vereinbarungen |
+| `/agreements/{id}` | Vereinbarungs-Detail |
+| `/circles/{id}/meetings` | Meeting-Liste |
+| `/meetings/{id}` | Protokoll (Agenda, Vereinbarungen, Spannungen) |
+| `/circles/{id}/tensions` | Spannungen |
+| `/tensions/{id}` | Spannungs-Detail + Auflösung |
+| `/members` | Mitgliederliste |
+| `/admin` | Administration + Export |
 
 ---
 
 ## Sicherheitshinweise
 
-- `config/config.local.php` **niemals** ins Git-Repository einchecken (`.gitignore`!)
-- `exports/` und `database/` vor Webzugriff schützen
-- In Produktion `'debug' => false` in der Konfiguration
-- HTTPS verwenden (HSTS-Header ist in `.htaccess` vorbereitet, nur auskommentiert)
+- `config/config.local.php` **niemals** ins Git einchecken → `.gitignore` eintragen
+- `exports/` und `database/` dürfen vom Web nicht erreichbar sein
+- In Produktion: `'debug' => false`
+- HTTPS nutzen (HSTS in `.htaccess` ist vorbereitet, nur auskommentiert)
