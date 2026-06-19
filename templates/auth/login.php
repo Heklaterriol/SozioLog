@@ -4,7 +4,7 @@
     <div class="auth-card__brand">
         <div class="auth-card__logo" aria-hidden="true">◎</div>
         <div class="auth-card__app-name"><?= htmlspecialchars($config['app']['name']) ?></div>
-        <div class="auth-card__tagline">Soziokratisches Logbuch (S3)</div>
+        <div class="auth-card__tagline">Soziokratisches Logbuch</div>
     </div>
 
     <form method="post" action="<?= $base ?>/login" class="form">

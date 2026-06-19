@@ -1,6 +1,6 @@
 # Soziokratisches Logbuch
 
-Webbasiertes Logbuch für Organisationen nach **Sociocracy 3.0 (S3)**.  
+Webbasiertes Logbuch für Organisationen nach **Sociocracy**.  
 PHP 8.1+ · MySQL 8+ · Apache 2.4+ · kein Framework · Composer für Passwort-Reset (PHPMailer)
 
 ---

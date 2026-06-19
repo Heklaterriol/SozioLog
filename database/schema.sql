@@ -1,5 +1,5 @@
 -- ============================================================
---  Soziokratisches Logbuch — Datenbankschema (S3)
+--  Soziokratisches Logbuch — Datenbankschema
 --  Zeichensatz: utf8mb4 / utf8mb4_unicode_ci
 -- ============================================================
 

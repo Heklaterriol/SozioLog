@@ -1,6 +1,6 @@
 {
     "name": "logbuch/soziokratie",
-    "description": "Soziokratisches Logbuch (S3)",
+    "description": "Soziokratisches Logbuch",
     "type": "project",
     "require": {
         "php": ">=8.1",

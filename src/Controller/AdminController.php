@@ -242,7 +242,7 @@ class AdminController extends BaseController
         $html .= '
         <div class="cover">
             <h1 style="font-size:24pt">' . $appName . '</h1>
-            <div class="org">Soziokratisches Logbuch (S3)</div>
+            <div class="org">Soziokratisches Logbuch</div>
             <div class="dt">Export vom ' . $date . '</div>
         </div>';
 
