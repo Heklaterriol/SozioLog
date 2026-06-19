@@ -43,6 +43,22 @@ return [
     ],
 
     // ----------------------------------------------------------
+    //  E-Mail-Versand (SMTP, für Passwort-Reset etc.)
+    //  In config.local.php überschreiben!
+    // ----------------------------------------------------------
+    'mail' => [
+        'host'        => 'smtp.example.org',
+        'port'        => 587,
+        'encryption'  => 'tls',     // 'tls', 'ssl' oder '' (kein Verschlüsselung)
+        'username'    => 'logbuch@example.org',
+        'password'    => '',
+        'from_email'  => 'logbuch@example.org',
+        'from_name'   => 'Soziokratisches Logbuch',
+        // Reset-Link verfällt nach dieser Zeit (Sekunden)
+        'reset_token_ttl' => 3600,
+    ],
+
+    // ----------------------------------------------------------
     //  Pfade (absolut)
     // ----------------------------------------------------------
     'paths' => [

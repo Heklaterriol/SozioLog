@@ -10,6 +10,13 @@ define('APP_ROOT', dirname(__DIR__));
 define('APP_START', microtime(true));
 
 // ------------------------------------------------------------------
+//  Composer-Autoloader (für PHPMailer etc., falls installiert)
+// ------------------------------------------------------------------
+if (file_exists(APP_ROOT . '/vendor/autoload.php')) {
+    require APP_ROOT . '/vendor/autoload.php';
+}
+
+// ------------------------------------------------------------------
 //  Autoloader (PSR-4-ähnlich, Namespace Logbuch\ → src/)
 // ------------------------------------------------------------------
 spl_autoload_register(function (string $class): void {

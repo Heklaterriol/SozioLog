@@ -22,7 +22,26 @@ CREATE TABLE IF NOT EXISTS `members` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  2. circles  (Kreise — selbstreferenzierend)
+--  1b. password_resets  (Tokens für "Passwort vergessen")
+--  Es wird nur der SHA-256-Hash des Tokens gespeichert, nicht
+--  der Token selbst — der Klartext steht nur in der E-Mail.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `password_resets` (
+    `id`           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `member_id`    INT UNSIGNED  NOT NULL,
+    `token_hash`   CHAR(64)      NOT NULL  COMMENT 'SHA-256 Hex-Hash des Reset-Tokens',
+    `expires_at`   DATETIME      NOT NULL,
+    `used_at`      DATETIME               DEFAULT NULL  COMMENT 'NULL = noch nicht eingelöst',
+    `created_at`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `requested_ip` VARCHAR(45)            DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_pwreset_token` (`token_hash`),
+    KEY `idx_pwreset_member`  (`member_id`),
+    KEY `idx_pwreset_expires` (`expires_at`),
+    CONSTRAINT `fk_pwreset_member`
+        FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `circles` (
     `id`          INT UNSIGNED    NOT NULL AUTO_INCREMENT,

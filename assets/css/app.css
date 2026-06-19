@@ -682,6 +682,48 @@ ul, ol { list-style: none; }
 .auth-card__app-name { font-size: var(--text-lg); font-weight: 700; }
 .auth-card__tagline  { font-size: var(--text-sm); color: var(--c-ink-2); }
 
+.auth-card__row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: calc(var(--sp-2) * -1);
+}
+.auth-card__link {
+    font-size: var(--text-sm);
+    color: var(--c-accent);
+}
+.auth-card__link:hover { text-decoration: underline; }
+
+.auth-card__foot {
+    text-align: center;
+    margin-top: var(--sp-6);
+    font-size: var(--text-sm);
+    color: var(--c-ink-2);
+}
+
+/* Eingabefeld mit Inline-Aktion (z. B. Passwort anzeigen) */
+.input-with-action { position: relative; display: flex; }
+.input-with-action .form-input { padding-right: calc(var(--sp-8) + var(--sp-2)); }
+.input-with-action__btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: var(--sp-8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--c-ink-2);
+    cursor: pointer;
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+.input-with-action__btn:hover { color: var(--c-ink); }
+.input-with-action__btn:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--c-accent);
+}
+
 /* ------------------------------------------------------------
    17. Responsive
 ------------------------------------------------------------ */

@@ -75,4 +75,70 @@ class MemberModel
         }
         return (bool) $this->db->fetchValue($sql, $params);
     }
+
+    public function findByEmail(string $email): ?array
+    {
+        return $this->db->fetchOne(
+            "SELECT id, name, email FROM members WHERE email = ?",
+            [strtolower(trim($email))]
+        );
+    }
+
+    // ------------------------------------------------------------------
+    //  Passwort-Reset
+    // ------------------------------------------------------------------
+
+    /**
+     * Legt einen neuen Reset-Token an und gibt den KLARTEXT-Token zurück
+     * (wird nur in der E-Mail verwendet, nie persistiert).
+     */
+    public function createPasswordReset(int $memberId, int $ttlSeconds, ?string $ip): string
+    {
+        $token     = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $token);
+        $expiresAt = date('Y-m-d H:i:s', time() + $ttlSeconds);
+
+        // Alte, noch offene Tokens dieses Mitglieds entwerten
+        $this->db->execute(
+            "DELETE FROM password_resets WHERE member_id = ? AND used_at IS NULL",
+            [$memberId]
+        );
+
+        $this->db->insert(
+            "INSERT INTO password_resets (member_id, token_hash, expires_at, requested_ip)
+             VALUES (?, ?, ?, ?)",
+            [$memberId, $tokenHash, $expiresAt, $ip]
+        );
+
+        return $token;
+    }
+
+    /**
+     * Prüft einen Klartext-Token und gibt bei Gültigkeit die zugehörige
+     * member_id zurück, sonst null (abgelaufen, schon benutzt, unbekannt).
+     */
+    public function findValidPasswordReset(string $token): ?int
+    {
+        $tokenHash = hash('sha256', $token);
+
+        $row = $this->db->fetchOne(
+            "SELECT member_id FROM password_resets
+             WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW()",
+            [$tokenHash]
+        );
+
+        return $row ? (int) $row['member_id'] : null;
+    }
+
+    /**
+     * Markiert den Token als benutzt (Einmal-Verwendung).
+     */
+    public function consumePasswordReset(string $token): void
+    {
+        $tokenHash = hash('sha256', $token);
+        $this->db->execute(
+            "UPDATE password_resets SET used_at = NOW() WHERE token_hash = ?",
+            [$tokenHash]
+        );
+    }
 }

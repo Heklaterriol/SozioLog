@@ -102,8 +102,16 @@ class Router
             return;
         }
 
-        // Auth-Check (außer Login-Seiten)
-        if (!in_array($handler, ['Auth@loginForm', 'Auth@login'], true)) {
+        // Auth-Check (außer Login- und Passwort-Reset-Seiten)
+        $publicHandlers = [
+            'Auth@loginForm',
+            'Auth@login',
+            'Auth@forgotPasswordForm',
+            'Auth@forgotPassword',
+            'Auth@resetPasswordForm',
+            'Auth@resetPassword',
+        ];
+        if (!in_array($handler, $publicHandlers, true)) {
             $auth = new Middleware\AuthMiddleware();
             if (!$auth->handle()) {
                 $this->redirect('/login');
