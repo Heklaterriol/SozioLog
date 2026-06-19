@@ -29,7 +29,7 @@ class CircleModel
             FROM   circles c
             LEFT JOIN circles p ON c.parent_id = p.id
             {$where}
-            ORDER BY p.name NULLS FIRST, c.name
+            ORDER BY p.name IS NOT NULL, p.name, c.name
         ");
     }
 
