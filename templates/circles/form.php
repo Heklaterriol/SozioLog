@@ -63,7 +63,7 @@ function inputClass(array $errors, string $field): string {
                 <textarea id="driver" name="driver" class="form-textarea" rows="3"
                           placeholder="Was ist die Situation, die diesen Kreis notwendig macht?"
                 ><?= htmlspecialchars($circle['driver'] ?? '') ?></textarea>
-                <span class="form-hint">S3: Beschreibe Situation, Bedürfnis und mögliche Auswirkung.</span>
+                <span class="form-hint">Beschreibe Situation, Bedürfnis und mögliche Auswirkung.</span>
             </div>
 
             <div class="form-field">

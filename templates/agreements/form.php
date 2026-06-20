@@ -80,7 +80,7 @@ function agCls(array $errors, string $field): string {
                 <textarea id="driver" name="driver" class="form-textarea" rows="3"
                           placeholder="Welches Bedürfnis oder welche Situation hat diese Vereinbarung ausgelöst?"
                 ><?= htmlspecialchars($agreement['driver'] ?? '') ?></textarea>
-                <span class="form-hint">S3: Beschreibe Situation, Bedürfnis und Auswirkung.</span>
+                <span class="form-hint">Beschreibe Situation, Bedürfnis und Auswirkung.</span>
             </div>
 
             <div class="form-field">

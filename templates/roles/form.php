@@ -100,7 +100,7 @@ function rfCls(array $errors, string $field): string {
                 <label class="form-check">
                     <input type="checkbox" name="is_elected" value="1"
                            <?= !empty($role['is_elected']) ? 'checked' : '' ?>>
-                    Gewählte Rolle (unterliegt dem S3-Wahlprozess)
+                    Gewählte Rolle (unterliegt dem Wahlprozess)
                 </label>
             </div>
 

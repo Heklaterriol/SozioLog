@@ -8,7 +8,7 @@ use Logbuch\Database;
  *
  * Eine Delegation beschreibt die Übertragung von Autorität
  * eines Überkreises (from_circle) an einen Unterkreis (to_circle).
- * S3: Jede Delegation hat optional einen Rep-Link (vom Unterkreis
+ * Jede Delegation hat optional einen Rep-Link (vom Unterkreis
  * in den Überkreis) und einen Del-Link (vom Überkreis in den Unterkreis).
  */
 class DelegationModel

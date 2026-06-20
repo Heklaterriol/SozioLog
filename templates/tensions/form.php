@@ -52,7 +52,7 @@ function tfCls(array $errors, string $field): string {
                 <textarea id="description" name="description" class="form-textarea" rows="5"
                           placeholder="Was ist die Situation? Welches Bedürfnis ist nicht erfüllt? Was ist die Auswirkung?"
                 ><?= htmlspecialchars($tension['description'] ?? '') ?></textarea>
-                <span class="form-hint">S3: Beschreibe Situation, Bedürfnis und Auswirkung so konkret wie möglich.</span>
+                <span class="form-hint">Beschreibe Situation, Bedürfnis und Auswirkung so konkret wie möglich.</span>
             </div>
 
             <div class="form-actions">

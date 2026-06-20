@@ -1,7 +1,7 @@
 # Soziokratisches Logbuch
 
-Webbasiertes Logbuch für Organisationen nach **Soziokratie**.  
-PHP 8.1+ · MySQL 8+ · Apache 2.4+ · kein Framework · Composer für Passwort-Reset (PHPMailer)
+Webbasiertes Logbuch für soziokratisch organisierte Gruppen und Organisationen.  
+PHP 8.3+ · MySQL 8+ / MariaDB 10.2.7+ · Apache 2.4+ · kein Framework · Composer für Passwort-Reset (PHPMailer)
 
 ---
 
@@ -55,7 +55,7 @@ zu müssen.
 
 | Komponente | Version |
 |---|---|
-| PHP | ≥ 8.1, Erweiterung `pdo_mysql` |
+| PHP | ≥ 8.3, Erweiterung `pdo_mysql` |
 | MySQL / MariaDB | ≥ 8.0 / ≥ 10.5 |
 | Apache | ≥ 2.4 mit `mod_rewrite` |
 | Composer | **erforderlich** für Passwort-Reset (PHPMailer), optional für PDF-Export (mPDF) |

@@ -84,15 +84,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // Schema einspielen (nur Tabellen, die noch nicht existieren)
+    // Schema einspielen — nur wenn die Datenbank noch leer ist.
+    // (Verhindert Fehler bei doppeltem Absenden oder einem erneuten
+    // Versuch nach einem vorherigen Teil-Fehlschlag: CREATE TABLE ist
+    // zwar mit IF NOT EXISTS abgesichert, die nachträglichen
+    // ALTER TABLE ... ADD CONSTRAINT-Anweisungen für zirkuläre
+    // Fremdschlüssel aber nicht.)
     if (!$errors && $pdo) {
         try {
-            $sql   = file_get_contents($root . '/database/install.sql');
-            $sql   = preg_replace('/^--.*$/m', '', $sql); // Kommentarzeilen entfernen
-            $stmts = array_filter(array_map('trim', explode(';', $sql)));
-            foreach ($stmts as $stmt) {
-                if ($stmt !== '') {
-                    $pdo->exec($stmt);
+            $alreadyInstalled = (bool) $pdo->query("SHOW TABLES LIKE 'members'")->fetchColumn();
+            if (!$alreadyInstalled) {
+                $sql   = file_get_contents($root . '/database/install.sql');
+                $sql   = preg_replace('/^--.*$/m', '', $sql); // Kommentarzeilen entfernen
+                $stmts = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($stmts as $stmt) {
+                    if ($stmt !== '') {
+                        $pdo->exec($stmt);
+                    }
                 }
             }
         } catch (\PDOException $e) {
