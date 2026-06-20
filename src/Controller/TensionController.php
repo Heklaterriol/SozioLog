@@ -54,10 +54,26 @@ class TensionController extends BaseController
     /** GET /tensions/new?circle_id=X */
     public function create(array $params): void
     {
-        $circles = (new CircleModel())->findAll();
+        $perm = $this->permissions();
+
+        $circles = array_values(array_filter(
+            (new CircleModel())->findAll(),
+            fn($c) => $perm->canRaiseTensionIn((int) $c['id'])
+        ));
+
+        if (empty($circles)) {
+            $this->flash('error', 'Du hast in keinem Kreis die Berechtigung, Spannungen einzureichen.');
+            $this->redirect('/circles');
+        }
+
+        $prefillCircleId = (int) ($_GET['circle_id'] ?? 0);
+        if ($prefillCircleId && !$perm->canRaiseTensionIn($prefillCircleId)) {
+            $prefillCircleId = 0;
+        }
+
         $this->render('tensions/form', [
             'pageTitle' => 'Spannung einreichen',
-            'tension'   => ['circle_id' => (int) ($_GET['circle_id'] ?? 0), 'status' => 'open'],
+            'tension'   => ['circle_id' => $prefillCircleId, 'status' => 'open'],
             'circles'   => $circles,
             'errors'    => [],
             'csrf'      => $this->csrfToken(),
@@ -68,10 +84,14 @@ class TensionController extends BaseController
     public function store(array $params): void
     {
         $this->verifyCsrf();
-        $user = $this->currentUser();
+        $perm     = $this->permissions();
+        $user     = $this->currentUser();
+        $circleId = $this->inputInt('circle_id');
+
+        $this->requireCirclePermission($circleId, fn($c) => $perm->canRaiseTensionIn($c));
 
         $data = [
-            'circle_id'   => $this->inputInt('circle_id'),
+            'circle_id'   => $circleId,
             'raised_by'   => $user['id'] ?? null,
             'title'       => $this->inputString('title'),
             'description' => $this->inputString('description'),
@@ -81,10 +101,14 @@ class TensionController extends BaseController
         $errors = $this->validateTension($data);
 
         if ($errors) {
+            $circles = array_values(array_filter(
+                (new CircleModel())->findAll(),
+                fn($c) => $perm->canRaiseTensionIn((int) $c['id'])
+            ));
             $this->render('tensions/form', [
                 'pageTitle' => 'Spannung einreichen',
                 'tension'   => $data,
-                'circles'   => (new CircleModel())->findAll(),
+                'circles'   => $circles,
                 'errors'    => $errors,
                 'csrf'      => $this->csrfToken(),
             ]);
@@ -104,6 +128,8 @@ class TensionController extends BaseController
         $id      = (int) $params['id'];
         $tension = $this->tensions->findById($id);
         if (!$tension) { $this->flash('error', 'Spannung nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission((int) $tension['circle_id'], fn($c) => $this->permissions()->canEditTensionIn($c));
 
         $data = [
             'title'       => $this->inputString('title')       ?: $tension['title'],

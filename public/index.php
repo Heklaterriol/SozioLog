@@ -130,11 +130,18 @@ $router->post('/members',                     'Member@store');
 $router->get('/members/{id}',                 'Member@show');
 $router->get('/members/{id}/edit',            'Member@edit');
 $router->post('/members/{id}',                'Member@update');
+$router->post('/members/{id}/circles',        'Member@updateCircles');
+$router->post('/members/{id}/roles',          'Member@assignRole');
+$router->post('/members/{id}/roles/{assignmentId}/end', 'Member@endRole');
 
 // Auth
 $router->get('/login',                        'Auth@loginForm');
 $router->post('/login',                       'Auth@login');
 $router->post('/logout',                      'Auth@logout');
+$router->get('/password/forgot',              'Auth@forgotPasswordForm');
+$router->post('/password/forgot',             'Auth@forgotPassword');
+$router->get('/password/reset/{token}',       'Auth@resetPasswordForm');
+$router->post('/password/reset/{token}',      'Auth@resetPassword');
 
 // Vereinbarungs-Versionen
 $router->get('/agreements/{id}/versions',                        'Agreement@versions');

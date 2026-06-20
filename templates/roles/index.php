@@ -23,7 +23,7 @@ $roleTypeLabels = [
         <h1 class="page-header__title">Rollen</h1>
         <p class="page-header__sub"><?= htmlspecialchars($circle['name']) ?></p>
     </div>
-    <?php if (!empty($currentUser['is_admin'])): ?>
+    <?php if ($perm->canManageRolesIn($circle['id'])): ?>
         <div class="page-header__actions">
             <a href="<?= $base ?>/circles/<?= $circle['id'] ?>/roles/new" class="btn btn--primary">
                 <i class="ti ti-plus" aria-hidden="true"></i> Neue Rolle
@@ -38,7 +38,7 @@ $roleTypeLabels = [
             <div class="empty-state">
                 <i class="ti ti-user-off" aria-hidden="true"></i>
                 <span class="empty-state__title">Noch keine Rollen definiert</span>
-                <?php if (!empty($currentUser['is_admin'])): ?>
+                <?php if ($perm->canManageRolesIn($circle['id'])): ?>
                     <a href="<?= $base ?>/circles/<?= $circle['id'] ?>/roles/new" class="btn btn--primary" style="margin-top:var(--sp-2)">
                         <i class="ti ti-plus" aria-hidden="true"></i> Erste Rolle anlegen
                     </a>
@@ -105,7 +105,7 @@ $roleTypeLabels = [
                                         <a href="<?= $base ?>/roles/<?= $r['id'] ?>" class="btn btn--ghost btn--sm" title="Details">
                                             <i class="ti ti-eye" aria-hidden="true"></i>
                                         </a>
-                                        <?php if (!empty($currentUser['is_admin'])): ?>
+                                        <?php if ($perm->canManageRolesIn($circle['id'])): ?>
                                             <a href="<?= $base ?>/roles/<?= $r['id'] ?>/edit" class="btn btn--ghost btn--sm" title="Bearbeiten">
                                                 <i class="ti ti-edit" aria-hidden="true"></i>
                                             </a>

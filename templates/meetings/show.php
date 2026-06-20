@@ -39,7 +39,7 @@ $meetingTypeLabel = [
         </p>
     </div>
     <div class="page-header__actions">
-        <?php if (!empty($currentUser['is_admin'])): ?>
+        <?php if ($perm->canWriteMeetingsIn($meeting['circle_id'])): ?>
             <a href="<?= $base ?>/meetings/<?= $meeting['id'] ?>/edit" class="btn btn--secondary btn--sm">
                 <i class="ti ti-edit" aria-hidden="true"></i> Bearbeiten
             </a>
@@ -147,6 +147,7 @@ $meetingTypeLabel = [
         <?php endif; ?>
 
         <!-- Neuen Punkt hinzufügen -->
+        <?php if ($perm->canWriteMeetingsIn($meeting['circle_id'])): ?>
         <div class="card__footer" style="flex-direction:column;align-items:flex-start;gap:var(--sp-3)">
             <div class="fw-600 text-sm">Agenda-Punkt hinzufügen</div>
             <form method="post" action="<?= $base ?>/meetings/<?= $meeting['id'] ?>/agenda"
@@ -176,6 +177,7 @@ $meetingTypeLabel = [
                 </button>
             </form>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -184,10 +186,12 @@ $meetingTypeLabel = [
     <div class="card">
         <div class="card__header">
             <span class="card__title"><i class="ti ti-file-text" aria-hidden="true"></i> Im Meeting getroffene Vereinbarungen</span>
-            <a href="<?= $base ?>/agreements/new?circle_id=<?= $meeting['circle_id'] ?>&meeting_id=<?= $meeting['id'] ?>"
-               class="btn btn--primary btn--sm">
-                <i class="ti ti-plus" aria-hidden="true"></i> Vereinbarung anlegen
-            </a>
+            <?php if ($perm->canCreateAgreementIn($meeting['circle_id'])): ?>
+                <a href="<?= $base ?>/agreements/new?circle_id=<?= $meeting['circle_id'] ?>&meeting_id=<?= $meeting['id'] ?>"
+                   class="btn btn--primary btn--sm">
+                    <i class="ti ti-plus" aria-hidden="true"></i> Vereinbarung anlegen
+                </a>
+            <?php endif; ?>
         </div>
         <?php if (empty($agreements)): ?>
             <div class="empty-state">

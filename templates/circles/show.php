@@ -34,10 +34,12 @@ $roleTypeLabels = [
         <?php endif; ?>
     </div>
     <div class="page-header__actions">
-        <a href="<?= $base ?>/circles/<?= $circle['id'] ?>/meetings/new" class="btn btn--secondary btn--sm">
-            <i class="ti ti-calendar-plus" aria-hidden="true"></i> Meeting anlegen
-        </a>
-        <?php if (!empty($currentUser['is_admin'])): ?>
+        <?php if ($perm->canWriteMeetingsIn($circle['id'])): ?>
+            <a href="<?= $base ?>/circles/<?= $circle['id'] ?>/meetings/new" class="btn btn--secondary btn--sm">
+                <i class="ti ti-calendar-plus" aria-hidden="true"></i> Meeting anlegen
+            </a>
+        <?php endif; ?>
+        <?php if ($perm->isAdmin()): ?>
             <a href="<?= $base ?>/circles/<?= $circle['id'] ?>/edit" class="btn btn--secondary btn--sm">
                 <i class="ti ti-edit" aria-hidden="true"></i> Bearbeiten
             </a>
@@ -70,7 +72,7 @@ $roleTypeLabels = [
 <div class="card">
     <div class="card__header">
         <span class="card__title"><i class="ti ti-circle" aria-hidden="true"></i> Unterkreise (<?= count($children) ?>)</span>
-        <?php if (!empty($currentUser['is_admin'])): ?>
+        <?php if ($perm->isAdmin()): ?>
             <a href="<?= $base ?>/circles/new?parent_id=<?= $circle['id'] ?>" class="btn btn--ghost btn--sm">
                 <i class="ti ti-plus" aria-hidden="true"></i> Unterkreis anlegen
             </a>
@@ -95,6 +97,47 @@ $roleTypeLabels = [
     </div>
 </div>
 <?php endif; ?>
+
+<?php if ($perm->isReadonly()): ?>
+
+    <!-- Lesend: nur die Mitgliederliste, keine Tabs -->
+    <div class="card">
+        <div class="card__header">
+            <span class="card__title"><i class="ti ti-users" aria-hidden="true"></i> Mitglieder</span>
+        </div>
+        <div class="card__body--flush">
+            <?php if (empty($members)): ?>
+                <div class="empty-state"><i class="ti ti-users-off" aria-hidden="true"></i><span>Noch keine Mitglieder zugewiesen</span></div>
+            <?php else: ?>
+                <table class="table">
+                    <thead><tr><th>Person</th><th>Rolle</th><th>Rollentyp</th></tr></thead>
+                    <tbody>
+                        <?php foreach ($members as $m): ?>
+                            <tr>
+                                <td>
+                                    <a href="<?= $base ?>/members/<?= $m['id'] ?>" class="fw-600">
+                                        <?= htmlspecialchars($m['name']) ?>
+                                    </a>
+                                </td>
+                                <td class="text-sm">
+                                    <?= $m['role_name'] ? htmlspecialchars($m['role_name']) : '<span class="text-muted">— ohne Rolle —</span>' ?>
+                                </td>
+                                <td>
+                                    <?php if ($m['role_type']): ?>
+                                        <span class="badge badge--<?= htmlspecialchars($m['role_type']) ?>"><?= htmlspecialchars($roleTypeLabels[$m['role_type']] ?? $m['role_type']) ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+        </div>
+    </div>
+
+<?php else: ?>
 
 <!-- Tabs -->
 <div class="tabs" role="tablist">
@@ -123,7 +166,7 @@ $roleTypeLabels = [
     <div class="card">
         <div class="card__header">
             <span class="card__title"><i class="ti ti-user-circle" aria-hidden="true"></i> Rollen</span>
-            <?php if (!empty($currentUser['is_admin'])): ?>
+            <?php if ($perm->canManageRolesIn($circle['id'])): ?>
                 <a href="<?= $base ?>/circles/<?= $circle['id'] ?>/roles/new" class="btn btn--primary btn--sm">
                     <i class="ti ti-plus" aria-hidden="true"></i> Neue Rolle
                 </a>
@@ -175,9 +218,11 @@ $roleTypeLabels = [
     <div class="card">
         <div class="card__header">
             <span class="card__title"><i class="ti ti-file-text" aria-hidden="true"></i> Aktive Vereinbarungen</span>
-            <a href="<?= $base ?>/agreements/new?circle_id=<?= $circle['id'] ?>" class="btn btn--primary btn--sm">
-                <i class="ti ti-plus" aria-hidden="true"></i> Neue Vereinbarung
-            </a>
+            <?php if ($perm->canCreateAgreementIn($circle['id'])): ?>
+                <a href="<?= $base ?>/agreements/new?circle_id=<?= $circle['id'] ?>" class="btn btn--primary btn--sm">
+                    <i class="ti ti-plus" aria-hidden="true"></i> Neue Vereinbarung
+                </a>
+            <?php endif; ?>
         </div>
         <div class="card__body--flush">
             <?php if (empty($agreements)): ?>
@@ -210,9 +255,11 @@ $roleTypeLabels = [
     <div class="card">
         <div class="card__header">
             <span class="card__title"><i class="ti ti-notes" aria-hidden="true"></i> Letzte Meetings</span>
-            <a href="<?= $base ?>/meetings/new?circle_id=<?= $circle['id'] ?>" class="btn btn--primary btn--sm">
-                <i class="ti ti-plus" aria-hidden="true"></i> Meeting anlegen
-            </a>
+            <?php if ($perm->canWriteMeetingsIn($circle['id'])): ?>
+                <a href="<?= $base ?>/meetings/new?circle_id=<?= $circle['id'] ?>" class="btn btn--primary btn--sm">
+                    <i class="ti ti-plus" aria-hidden="true"></i> Meeting anlegen
+                </a>
+            <?php endif; ?>
         </div>
         <div class="card__body--flush">
             <?php if (empty($meetings)): ?>
@@ -245,9 +292,11 @@ $roleTypeLabels = [
     <div class="card">
         <div class="card__header">
             <span class="card__title"><i class="ti ti-bolt" aria-hidden="true"></i> Offene Spannungen</span>
-            <a href="<?= $base ?>/tensions/new?circle_id=<?= $circle['id'] ?>" class="btn btn--primary btn--sm">
-                <i class="ti ti-plus" aria-hidden="true"></i> Spannung einreichen
-            </a>
+            <?php if ($perm->canRaiseTensionIn($circle['id'])): ?>
+                <a href="<?= $base ?>/tensions/new?circle_id=<?= $circle['id'] ?>" class="btn btn--primary btn--sm">
+                    <i class="ti ti-plus" aria-hidden="true"></i> Spannung einreichen
+                </a>
+            <?php endif; ?>
         </div>
         <div class="card__body--flush">
             <?php if (empty($tensions)): ?>
@@ -282,7 +331,7 @@ $roleTypeLabels = [
     <div class="card">
         <div class="card__header">
             <span class="card__title"><i class="ti ti-arrow-right-circle" aria-hidden="true"></i> Delegationen</span>
-            <?php if (!empty($currentUser['is_admin'])): ?>
+            <?php if ($perm->isAdmin()): ?>
                 <a href="<?= $base ?>/delegations/new?from_circle=<?= $circle['id'] ?>"
                    class="btn btn--primary btn--sm">
                     <i class="ti ti-plus" aria-hidden="true"></i> Neue Delegation
@@ -347,7 +396,7 @@ $roleTypeLabels = [
 <div id="tab-members" class="tab-panel" role="tabpanel">
     <div class="card">
         <div class="card__header">
-            <span class="card__title"><i class="ti ti-users" aria-hidden="true"></i> Mitglieder (über Rollenzuweisungen)</span>
+            <span class="card__title"><i class="ti ti-users" aria-hidden="true"></i> Mitglieder</span>
         </div>
         <div class="card__body--flush">
             <?php if (empty($members)): ?>
@@ -363,8 +412,16 @@ $roleTypeLabels = [
                                         <?= htmlspecialchars($m['name']) ?>
                                     </a>
                                 </td>
-                                <td class="text-sm"><?= htmlspecialchars($m['role_name']) ?></td>
-                                <td><span class="badge badge--<?= htmlspecialchars($m['role_type']) ?>"><?= htmlspecialchars($roleTypeLabels[$m['role_type']] ?? $m['role_type']) ?></span></td>
+                                <td class="text-sm">
+                                    <?= $m['role_name'] ? htmlspecialchars($m['role_name']) : '<span class="text-muted">— ohne Rolle —</span>' ?>
+                                </td>
+                                <td>
+                                    <?php if ($m['role_type']): ?>
+                                        <span class="badge badge--<?= htmlspecialchars($m['role_type']) ?>"><?= htmlspecialchars($roleTypeLabels[$m['role_type']] ?? $m['role_type']) ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -383,3 +440,5 @@ function switchTab(btn, panelId) {
     document.getElementById(panelId).classList.add('tab-panel--active');
 }
 </script>
+
+<?php endif; // !$perm->isReadonly() ?>

@@ -1,11 +1,15 @@
-<?php $base = rtrim($config['app']['base_url'], '/'); ?>
+<?php
+$base = rtrim($config['app']['base_url'], '/');
+$levelLabels = ['admin' => 'Admin', 'member' => 'Mitglied', 'readonly' => 'Lesend'];
+$levelBadge  = ['admin' => 'badge--facilitator', 'member' => 'badge--draft', 'readonly' => 'badge--expired'];
+?>
 
 <div class="page-header">
     <div>
         <h1 class="page-header__title">Mitglieder</h1>
         <p class="page-header__sub"><?= count($members) ?> Person<?= count($members) !== 1 ? 'en' : '' ?> in der Organisation</p>
     </div>
-    <?php if (!empty($currentUser['is_admin'])): ?>
+    <?php if ($perm->isAdmin() || $perm->isMember()): ?>
         <div class="page-header__actions">
             <a href="<?= $base ?>/members/new" class="btn btn--primary">
                 <i class="ti ti-user-plus" aria-hidden="true"></i> Person anlegen
@@ -28,13 +32,16 @@
                         <tr>
                             <th>Name</th>
                             <th>E-Mail</th>
-                            <th>Rolle</th>
+                            <th>Berechtigung</th>
                             <th>Mitglied seit</th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($members as $m): ?>
+                        <?php foreach ($members as $m):
+                            $level     = $m['permission_level'] ?? ($m['is_admin'] ? 'admin' : 'member');
+                            $canManage = $perm->canManageMemberRecord($circleIdsByUser[$m['id']] ?? []);
+                        ?>
                             <tr>
                                 <td>
                                     <div class="d-flex align-center gap-3">
@@ -50,11 +57,9 @@
                                 </td>
                                 <td class="text-sm"><?= htmlspecialchars($m['email']) ?></td>
                                 <td>
-                                    <?php if ($m['is_admin']): ?>
-                                        <span class="badge badge--facilitator">Admin</span>
-                                    <?php else: ?>
-                                        <span class="badge badge--draft">Mitglied</span>
-                                    <?php endif; ?>
+                                    <span class="badge <?= $levelBadge[$level] ?? 'badge--draft' ?>">
+                                        <?= $levelLabels[$level] ?? $level ?>
+                                    </span>
                                 </td>
                                 <td class="text-sm text-muted">
                                     <?= date('d.m.Y', strtotime($m['created_at'])) ?>
@@ -64,7 +69,7 @@
                                         <a href="<?= $base ?>/members/<?= $m['id'] ?>" class="btn btn--ghost btn--sm" title="Profil">
                                             <i class="ti ti-eye" aria-hidden="true"></i>
                                         </a>
-                                        <?php if (!empty($currentUser['is_admin'])): ?>
+                                        <?php if ($canManage): ?>
                                             <a href="<?= $base ?>/members/<?= $m['id'] ?>/edit" class="btn btn--ghost btn--sm" title="Bearbeiten">
                                                 <i class="ti ti-edit" aria-hidden="true"></i>
                                             </a>

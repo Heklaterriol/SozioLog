@@ -2,6 +2,7 @@
 namespace Logbuch\Controller;
 
 use Logbuch\Database;
+use Logbuch\Helper\Permissions;
 
 /**
  * BaseController — gemeinsame Helfer für alle Controller
@@ -10,6 +11,9 @@ abstract class BaseController
 {
     protected array $config;
     protected Database $db;
+    private ?array $resolvedUser = null;
+    private bool $userResolved = false;
+    private ?Permissions $permissions = null;
 
     public function __construct(array $config)
     {
@@ -34,9 +38,10 @@ abstract class BaseController
 
         // Daten als Variablen extrahieren (im Template-Scope)
         extract($data, EXTR_SKIP);
-        $config     = $this->config;
-        $flashMsg   = $this->getFlash();
+        $config      = $this->config;
+        $flashMsg    = $this->getFlash();
         $currentUser = $this->currentUser();
+        $perm        = $this->permissions();
 
         // Inhalt des eigentlichen Templates buffern
         ob_start();
@@ -90,22 +95,52 @@ abstract class BaseController
 
     protected function currentUser(): ?array
     {
+        if ($this->userResolved) {
+            return $this->resolvedUser;
+        }
+        $this->userResolved = true;
+
         $id = $_SESSION['user_id'] ?? null;
         if (!$id) {
-            return null;
+            return $this->resolvedUser = null;
         }
-        return $this->db->fetchOne(
-            'SELECT id, name, email, is_admin FROM members WHERE id = ?',
+        return $this->resolvedUser = $this->db->fetchOne(
+            'SELECT id, name, email, is_admin, permission_level FROM members WHERE id = ?',
             [(int) $id]
         );
     }
 
+    /**
+     * Zentraler Zugriff auf alle Berechtigungsentscheidungen.
+     * Siehe Logbuch\Helper\Permissions für die einzelnen can*()-Methoden.
+     */
+    protected function permissions(): Permissions
+    {
+        if ($this->permissions === null) {
+            $this->permissions = new Permissions($this->currentUser());
+        }
+        return $this->permissions;
+    }
+
     protected function requireAdmin(): void
     {
-        $user = $this->currentUser();
-        if (!$user || !$user['is_admin']) {
+        if (!$this->permissions()->isAdmin()) {
             $this->flash('error', 'Diese Aktion erfordert Admin-Rechte.');
             $this->redirect('/');
+        }
+    }
+
+    /**
+     * Bricht mit Fehlermeldung ab, wenn der Nutzer im angegebenen Kreis
+     * weder Admin noch berechtigtes Mitglied ("eigener Kreis") ist.
+     *
+     * @param callable(int): bool $check  z.B. fn($cid) => $this->permissions()->canManageRolesIn($cid)
+     */
+    protected function requireCirclePermission(int $circleId, callable $check, string $message = 'Dafür fehlen dir die Berechtigungen.'): void
+    {
+        if (!$check($circleId)) {
+            $this->flash('error', $message);
+            $this->redirect('/circles/' . $circleId);
         }
     }
 

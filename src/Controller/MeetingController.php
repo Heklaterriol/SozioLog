@@ -58,12 +58,28 @@ class MeetingController extends BaseController
     /** GET /meetings/new?circle_id=X */
     public function create(array $params): void
     {
-        $circles = (new CircleModel())->findAll();
+        $perm = $this->permissions();
+
+        $circles = array_values(array_filter(
+            (new CircleModel())->findAll(),
+            fn($c) => $perm->canWriteMeetingsIn((int) $c['id'])
+        ));
+
+        if (empty($circles)) {
+            $this->flash('error', 'Du hast in keinem Kreis die Berechtigung, Meetings anzulegen.');
+            $this->redirect('/circles');
+        }
+
+        $prefillCircleId = (int) ($_GET['circle_id'] ?? 0);
+        if ($prefillCircleId && !$perm->canWriteMeetingsIn($prefillCircleId)) {
+            $prefillCircleId = 0;
+        }
+
         $members = (new MemberModel())->findAll();
 
         $this->render('meetings/form', [
             'pageTitle' => 'Neues Meeting',
-            'meeting'   => ['circle_id' => $_GET['circle_id'] ?? ''],
+            'meeting'   => ['circle_id' => $prefillCircleId ?: ''],
             'circles'   => $circles,
             'members'   => $members,
             'errors'    => [],
@@ -76,10 +92,13 @@ class MeetingController extends BaseController
     {
         $this->verifyCsrf();
 
+        $circleId = $this->inputInt('circle_id');
+        $this->requireCirclePermission($circleId, fn($c) => $this->permissions()->canWriteMeetingsIn($c));
+
         $attendeeIds = array_filter(array_map('intval', (array) ($_POST['attendees'] ?? [])));
 
         $data = [
-            'circle_id'      => $this->inputInt('circle_id'),
+            'circle_id'      => $circleId,
             'meeting_type'   => $this->inputString('meeting_type') ?: 'governance',
             'held_at'        => $this->inputString('held_at'),
             'location'       => $this->inputString('location'),
@@ -92,10 +111,15 @@ class MeetingController extends BaseController
         $errors = $this->meetings->validate($data);
 
         if ($errors) {
+            $perm    = $this->permissions();
+            $circles = array_values(array_filter(
+                (new CircleModel())->findAll(),
+                fn($c) => $perm->canWriteMeetingsIn((int) $c['id'])
+            ));
             $this->render('meetings/form', [
                 'pageTitle' => 'Neues Meeting',
                 'meeting'   => $data,
-                'circles'   => (new CircleModel())->findAll(),
+                'circles'   => $circles,
                 'members'   => (new MemberModel())->findAll(),
                 'errors'    => $errors,
                 'csrf'      => $this->csrfToken(),
@@ -113,6 +137,8 @@ class MeetingController extends BaseController
     {
         $meeting = $this->meetings->findById((int) $params['id']);
         if (!$meeting) { $this->flash('error', 'Meeting nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission((int) $meeting['circle_id'], fn($c) => $this->permissions()->canWriteMeetingsIn($c));
 
         // attendees aus JSON dekodieren
         $meeting['attendees'] = json_decode($meeting['attendees'] ?? '[]', true) ?? [];
@@ -135,6 +161,8 @@ class MeetingController extends BaseController
 
         $meeting = $this->meetings->findById($id);
         if (!$meeting) { $this->flash('error', 'Meeting nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission((int) $meeting['circle_id'], fn($c) => $this->permissions()->canWriteMeetingsIn($c));
 
         $attendeeIds = array_filter(array_map('intval', (array) ($_POST['attendees'] ?? [])));
 
@@ -172,6 +200,11 @@ class MeetingController extends BaseController
     {
         $this->verifyCsrf();
         $id = (int) $params['id'];
+
+        $meeting = $this->meetings->findById($id);
+        if (!$meeting) { $this->flash('error', 'Meeting nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission((int) $meeting['circle_id'], fn($c) => $this->permissions()->canWriteMeetingsIn($c));
 
         $this->meetings->addAgendaItem($id, [
             'tension_id' => $this->inputInt('tension_id') ?: null,

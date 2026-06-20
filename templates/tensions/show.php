@@ -54,6 +54,7 @@ $statusLabels = [
         </div>
 
         <!-- Status aktualisieren -->
+        <?php if ($perm->canEditTensionIn($tension['circle_id'])): ?>
         <div class="card">
             <div class="card__header">
                 <span class="card__title"><i class="ti ti-edit" aria-hidden="true"></i> Status / Auflösung aktualisieren</span>
@@ -112,6 +113,7 @@ $statusLabels = [
                 </form>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 
     <!-- Seitenleiste -->

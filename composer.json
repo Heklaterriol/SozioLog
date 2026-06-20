@@ -4,9 +4,9 @@
     "type": "project",
     "require": {
         "php": ">=8.1",
-        "phpmailer/phpmailer": "^7.1",
-        "mpdf/mpdf": "^8.3"
+        "phpmailer/phpmailer": "^6.9"
     },
+    "require-dev": {},
     "suggest": {
         "mpdf/mpdf": "Für den PDF-Export unter /admin — composer require mpdf/mpdf"
     },

@@ -56,13 +56,30 @@ class AgreementController extends BaseController
     /** GET /agreements/new?circle_id=X[&meeting_id=Y] */
     public function create(array $params): void
     {
-        $circles  = (new CircleModel())->findAll();
+        $perm = $this->permissions();
+
+        // Nur Kreise zur Auswahl anbieten, in denen Vereinbarungen
+        // angelegt werden dürfen (admin: alle, member: eigene Kreise)
+        $circles = array_values(array_filter(
+            (new CircleModel())->findAll(),
+            fn($c) => $perm->canCreateAgreementIn((int) $c['id'])
+        ));
+
+        if (empty($circles)) {
+            $this->flash('error', 'Du hast in keinem Kreis die Berechtigung, Vereinbarungen anzulegen.');
+            $this->redirect('/circles');
+        }
+
         $prefill  = [
             'circle_id'  => (int) ($_GET['circle_id']  ?? 0),
             'meeting_id' => (int) ($_GET['meeting_id'] ?? 0),
             'agreed_at'  => date('Y-m-d'),
             'status'     => 'active',
         ];
+
+        if ($prefill['circle_id'] && !$perm->canCreateAgreementIn($prefill['circle_id'])) {
+            $prefill['circle_id'] = 0;
+        }
 
         // Meetings für den vorgewählten Kreis laden
         $meetings = $prefill['circle_id']
@@ -84,9 +101,13 @@ class AgreementController extends BaseController
     {
         $this->verifyCsrf();
 
-        $user = $this->currentUser();
+        $user     = $this->currentUser();
+        $circleId = $this->inputInt('circle_id');
+
+        $this->requireCirclePermission($circleId, fn($c) => $this->permissions()->canCreateAgreementIn($c));
+
         $data = [
-            'circle_id'   => $this->inputInt('circle_id'),
+            'circle_id'   => $circleId,
             'meeting_id'  => $this->inputInt('meeting_id') ?: null,
             'title'       => $this->inputString('title'),
             'driver'      => $this->inputString('driver'),
@@ -100,7 +121,11 @@ class AgreementController extends BaseController
         $errors = $this->agreements->validate($data);
 
         if ($errors) {
-            $circles  = (new CircleModel())->findAll();
+            $perm     = $this->permissions();
+            $circles  = array_values(array_filter(
+                (new CircleModel())->findAll(),
+                fn($c) => $perm->canCreateAgreementIn((int) $c['id'])
+            ));
             $meetings = $data['circle_id']
                 ? (new MeetingModel())->findByCircle($data['circle_id'], 50)
                 : [];
@@ -126,6 +151,8 @@ class AgreementController extends BaseController
         $agreement = $this->agreements->findById((int) $params['id']);
         if (!$agreement) { $this->flash('error', 'Vereinbarung nicht gefunden.'); $this->redirect('/circles'); }
 
+        $this->requireCirclePermission((int) $agreement['circle_id'], fn($c) => $this->permissions()->canEditAgreementIn($c));
+
         $circles  = (new CircleModel())->findAll();
         $meetings = (new MeetingModel())->findByCircle($agreement['circle_id'], 50);
 
@@ -147,6 +174,8 @@ class AgreementController extends BaseController
         $id        = (int) $params['id'];
         $agreement = $this->agreements->findById($id);
         if (!$agreement) { $this->flash('error', 'Vereinbarung nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission((int) $agreement['circle_id'], fn($c) => $this->permissions()->canEditAgreementIn($c));
 
         $user = $this->currentUser();
         $data = [

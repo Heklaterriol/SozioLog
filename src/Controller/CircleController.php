@@ -42,12 +42,27 @@ class CircleController extends BaseController
             $this->redirect('/circles');
         }
 
+        $children = $this->circles->findChildren($circle['id']);
+        $members  = $this->circles->findMembers($circle['id']);
+
+        // Lesend-Berechtigte sehen nur die Kreisstruktur + Mitglieder —
+        // Rollen, Vereinbarungen, Meetings, Spannungen, Delegationen
+        // werden für sie gar nicht erst geladen.
+        if ($this->permissions()->isReadonly()) {
+            $this->render('circles/show', [
+                'pageTitle' => $circle['name'],
+                'circle'    => $circle,
+                'children'  => $children,
+                'members'   => $members,
+                'csrf'      => $this->csrfToken(),
+            ]);
+            return;
+        }
+
         $roles       = (new RoleModel())->findByCircle($circle['id']);
         $agreements  = (new AgreementModel())->findByCircle($circle['id'], activeOnly: true);
         $meetings    = (new MeetingModel())->findByCircle($circle['id'], limit: 5);
         $tensions    = (new TensionModel())->findByCircle($circle['id'], status: 'open');
-        $children    = $this->circles->findChildren($circle['id']);
-        $members     = $this->circles->findMembers($circle['id']);
 
         $this->render('circles/show', [
             'pageTitle'  => $circle['name'],

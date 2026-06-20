@@ -2,6 +2,7 @@
 $base   = rtrim($config['app']['base_url'], '/');
 $isEdit = !empty($member['id']);
 $action = $isEdit ? $base . '/members/' . $member['id'] : $base . '/members';
+$currentLevel = $member['permission_level'] ?? ($member['is_admin'] ?? false ? 'admin' : 'member');
 
 function mfErr(array $errors, string $field): string {
     return isset($errors[$field])
@@ -58,14 +59,61 @@ function mfCls(array $errors, string $field): string {
                 <span class="form-hint">Mindestens 8 Zeichen.</span>
             </div>
 
-            <?php if (!empty($currentUser['is_admin'])): ?>
+            <?php if (!empty($isAdmin)): ?>
                 <div class="form-field">
-                    <label class="form-check">
-                        <input type="checkbox" name="is_admin" value="1"
-                               <?= !empty($member['is_admin']) ? 'checked' : '' ?>>
-                        Administrator-Rechte (kann Kreise, Rollen und Mitglieder verwalten)
-                    </label>
+                    <label class="form-label">Berechtigung</label>
+                    <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
+                        <label class="form-check form-check--block">
+                            <input type="radio" name="permission_level" value="admin"
+                                   <?= $currentLevel === 'admin' ? 'checked' : '' ?>>
+                            <span>
+                                <strong>Admin</strong><br>
+                                <span class="text-muted">kann Kreise, Rollen und Mitglieder verwalten</span>
+                            </span>
+                        </label>
+                        <label class="form-check form-check--block">
+                            <input type="radio" name="permission_level" value="member"
+                                   <?= $currentLevel === 'member' || $currentLevel === '' ? 'checked' : '' ?>>
+                            <span>
+                                <strong>Mitglied</strong><br>
+                                <span class="text-muted">sieht alles, verwaltet im eigenen Kreis</span>
+                            </span>
+                        </label>
+                        <label class="form-check form-check--block">
+                            <input type="radio" name="permission_level" value="readonly"
+                                   <?= $currentLevel === 'readonly' ? 'checked' : '' ?>>
+                            <span>
+                                <strong>Lesend</strong><br>
+                                <span class="text-muted">sieht Kreise und Mitglieder, keine Bearbeitung</span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
+            <?php elseif (!$isEdit): ?>
+                <?php if (!empty($ownCircles)): ?>
+                    <div class="form-field">
+                        <label class="form-label">Kreiszugehörigkeit</label>
+                        <?php if (count($ownCircles) === 1): ?>
+                            <p class="text-sm text-muted">
+                                Wird automatisch <strong><?= htmlspecialchars($ownCircles[0]['name']) ?></strong> zugeordnet.
+                            </p>
+                            <input type="hidden" name="circle_ids[]" value="<?= $ownCircles[0]['id'] ?>">
+                        <?php else: ?>
+                            <p class="text-sm text-muted" style="margin-bottom:var(--sp-2)">
+                                Du kannst Personen nur deinen eigenen Kreisen zuordnen.
+                            </p>
+                            <div style="display:flex;flex-direction:column;gap:var(--sp-2);padding:var(--sp-3);
+                                        border:1px solid var(--c-border);border-radius:var(--r-md)">
+                                <?php foreach ($ownCircles as $c): ?>
+                                    <label class="form-check">
+                                        <input type="checkbox" name="circle_ids[]" value="<?= $c['id'] ?>" checked>
+                                        <?= htmlspecialchars($c['name']) ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
 
             <div class="form-actions">

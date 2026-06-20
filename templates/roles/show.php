@@ -33,7 +33,7 @@ $typeLabel = $roleTypeLabels[$role['role_type']] ?? $role['role_type'];
         </h1>
         <p class="page-header__sub"><?= htmlspecialchars($role['circle_name']) ?></p>
     </div>
-    <?php if (!empty($currentUser['is_admin'])): ?>
+    <?php if ($perm->canManageRolesIn($role['circle_id'])): ?>
         <div class="page-header__actions">
             <a href="<?= $base ?>/roles/<?= $role['id'] ?>/edit" class="btn btn--secondary">
                 <i class="ti ti-edit" aria-hidden="true"></i> Bearbeiten
@@ -117,7 +117,7 @@ $typeLabel = $roleTypeLabels[$role['role_type']] ?? $role['role_type'];
                 <?php endif; ?>
             </div>
 
-            <?php if (!empty($currentUser['is_admin'])): ?>
+            <?php if ($perm->canManageRolesIn($role['circle_id'])): ?>
                 <div class="card__footer" style="flex-direction:column;align-items:flex-start;gap:var(--sp-3)">
                     <div class="text-sm fw-600">Person zuweisen</div>
                     <form method="post" action="<?= $base ?>/roles/<?= $role['id'] ?>/assign"

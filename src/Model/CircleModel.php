@@ -78,18 +78,52 @@ class CircleModel
         return $roots;
     }
 
-    /** Mitglieder eines Kreises (über aktive Rollenzuweisungen) */
+    /** Mehrere Kreise anhand einer Liste von IDs (für Auswahllisten) */
+    public function findByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if (!$ids) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        return $this->db->fetchAll(
+            "SELECT * FROM circles WHERE id IN ({$placeholders}) ORDER BY name",
+            $ids
+        );
+    }
+
+    /**
+     * Mitglieder eines Kreises — sowohl über aktive Rollenzuweisungen
+     * als auch über die direkte Kreiszugehörigkeit (circle_memberships).
+     * role_name/role_type sind NULL, wenn die Person nur direkt
+     * zugeordnet ist (keine Rolle in diesem Kreis hat).
+     */
     public function findMembers(int $circleId): array
     {
         return $this->db->fetchAll("
-            SELECT DISTINCT m.id, m.name, m.email,
+            SELECT m.id, m.name, m.email,
                    r.name AS role_name, r.role_type
             FROM   members m
             JOIN   role_assignments ra ON ra.member_id = m.id AND ra.end_date IS NULL
             JOIN   roles r             ON ra.role_id = r.id
             WHERE  r.circle_id = ?
-            ORDER BY m.name
-        ", [$circleId]);
+
+            UNION
+
+            SELECT m.id, m.name, m.email,
+                   NULL AS role_name, NULL AS role_type
+            FROM   members m
+            JOIN   circle_memberships cm ON cm.member_id = m.id
+            WHERE  cm.circle_id = ?
+              AND  m.id NOT IN (
+                  SELECT ra.member_id
+                  FROM role_assignments ra
+                  JOIN roles r2 ON ra.role_id = r2.id
+                  WHERE r2.circle_id = ? AND ra.end_date IS NULL
+              )
+
+            ORDER BY name
+        ", [$circleId, $circleId, $circleId]);
     }
 
     // ------------------------------------------------------------------

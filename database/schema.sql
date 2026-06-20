@@ -10,13 +10,15 @@ SET foreign_key_checks = 0;
 --  1. members  (Personen / Benutzer)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `members` (
-    `id`            INT UNSIGNED    NOT NULL AUTO_INCREMENT,
-    `name`          VARCHAR(120)    NOT NULL,
-    `email`         VARCHAR(180)    NOT NULL,
-    `password_hash` VARCHAR(255)    NOT NULL,
-    `is_admin`      TINYINT(1)      NOT NULL DEFAULT 0,
-    `created_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `id`               INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+    `name`             VARCHAR(120)    NOT NULL,
+    `email`            VARCHAR(180)    NOT NULL,
+    `password_hash`    VARCHAR(255)    NOT NULL,
+    `is_admin`         TINYINT(1)      NOT NULL DEFAULT 0,
+    `permission_level` ENUM('admin','member','readonly') NOT NULL DEFAULT 'member'
+                        COMMENT 'admin = alles | member = lesen überall, verwalten im eigenen Kreis | readonly = nur lesen',
+    `created_at`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_members_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -58,6 +60,30 @@ CREATE TABLE IF NOT EXISTS `circles` (
     CONSTRAINT `fk_circles_parent`
         FOREIGN KEY (`parent_id`) REFERENCES `circles` (`id`)
         ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+--  2b. circle_memberships
+--  Direkte Kreiszugehörigkeit (unabhängig von Rollen).
+--  Bestimmt u.a. den "eigenen Kreis" für die Berechtigungsstufe
+--  'member' (Verwalten erlaubt) und ist die Grundlage für die
+--  Kreiszuweisung auf der Mitglieder-Detailseite.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `circle_memberships` (
+    `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `member_id`   INT UNSIGNED NOT NULL,
+    `circle_id`   INT UNSIGNED NOT NULL,
+    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_circlemembership` (`member_id`, `circle_id`),
+    KEY `idx_cm_member` (`member_id`),
+    KEY `idx_cm_circle` (`circle_id`),
+    CONSTRAINT `fk_cm_member`
+        FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_cm_circle`
+        FOREIGN KEY (`circle_id`) REFERENCES `circles` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -291,6 +317,6 @@ SET foreign_key_checks = 1;
 --  Seed-Daten: erster Admin-Benutzer (Passwort ändern!)
 --  password_hash = bcrypt('changeme')
 -- ------------------------------------------------------------
-INSERT INTO `members` (`name`, `email`, `password_hash`, `is_admin`)
+INSERT INTO `members` (`name`, `email`, `password_hash`, `is_admin`, `permission_level`)
 VALUES ('Administrator', 'admin@example.org',
-        '$2y$12$placeholder_change_this_hash_immediately', 1);
+        '$2y$12$placeholder_change_this_hash_immediately', 1, 'admin');

@@ -15,10 +15,39 @@ PHP 8.1+ · MySQL 8+ · Apache 2.4+ · kein Framework · Composer für Passwort-
 | **Meetings** | Protokoll mit Agenda-Punkten, Teilnehmenden, Moderator·in & Protokollant·in |
 | **Spannungen** | Einreichen, Status-Workflow, Auflösung via Vereinbarung |
 | **Dashboard** | Kennzahlen, anstehende Meetings, Review-fällige Vereinbarungen, unbesetzte Rollen |
-| **Mitglieder** | Benutzerverwaltung mit Admin-Rollen, Passwort-Hashing, Passwort-Reset per E-Mail |
+| **Mitglieder** | Berechtigungsstufen (Admin/Mitglied/Lesend), Kreiszugehörigkeit, Rollenzuweisung mit Befristung, Passwort-Hashing, Passwort-Reset per E-Mail |
 | **Export** | JSON-Dump (sofort) · PDF-Logbuch via mPDF (optional) |
 
 **Sicherheit:** CSRF-Schutz auf allen POST-Formularen, Session-Auth, Prepared Statements (PDO), Security-Header per `.htaccess`
+
+---
+
+## Berechtigungsstufen
+
+Jede Person hat genau eine Stufe (`members.permission_level`):
+
+| | Admin | Mitglied | Lesend |
+|---|:---:|:---:|:---:|
+| Liste der Kreise sehen | ✓ | ✓ | ✓ |
+| Mitglieder der Kreise sehen | ✓ | ✓ | ✓ |
+| Rollen verwalten | ✓ | im eigenen Kreis | — |
+| Mitglieder verwalten | ✓ | im eigenen Kreis | — |
+| Neuen Kreis anlegen | ✓ | — | — |
+| Person anlegen | ✓ | im eigenen Kreis | — |
+| Vereinbarung anlegen | ✓ | im eigenen Kreis | — |
+| Spannung einreichen | ✓ | im eigenen Kreis | — |
+| Schreiben (Protokolle, Beschlüsse etc.) | ✓ | im eigenen Kreis | — |
+| PDF/JSON-Export | ✓ | — | — |
+
+**„Eigener Kreis"** = die Kreise, denen eine Person auf ihrer Mitglieder-Detailseite
+direkt zugeordnet wurde (unabhängig von Rollen). Ein Mitglied kann mehreren Kreisen
+zugeordnet sein. Die Berechtigungsstufe selbst sowie globale Aktionen (Kreis anlegen,
+Delegationen, Export) bleiben ausschließlich Admins vorbehalten — so kann sich niemand
+selbst hochstufen.
+
+Die gesamte Logik liegt zentral in `src/Helper/Permissions.php` — neue Rechte lassen
+sich dort als weitere `can*()`-Methode ergänzen, ohne an anderer Stelle im Code suchen
+zu müssen.
 
 ---
 
@@ -69,11 +98,17 @@ mysql -u logbuch_user -p logbuch < database/schema.sql
 ```
 
 **Bestehende Installation aktualisieren?** Statt `schema.sql` neu einzuspielen
-reicht die Migration:
+reichen die Migrationen:
 
 ```bash
 mysql -u logbuch_user -p logbuch < database/migration_003_password_resets.sql
+mysql -u logbuch_user -p logbuch < database/migration_004_permissions_circle_membership.sql
 ```
+
+Nach Migration 004 sind alle bestehenden Mitglieder automatisch auf
+**'member'** gesetzt (bisherige Admins auf **'admin'**) — niemand verliert
+Zugriff, aber neue Mitglieder können erst im eigenen Kreis verwalten,
+sobald sie auf ihrer Mitglieder-Detailseite einem Kreis zugeordnet wurden.
 
 ### 3. Konfiguration
 
@@ -160,9 +195,10 @@ logbuch/
 │   ├── config.php              Standard-Konfiguration (db, app, session, mail)
 │   └── config.local.php        Lokale Überschreibung — NICHT ins Repository!
 ├── database/
-│   ├── schema.sql               10 Tabellen mit FKs, Indizes, ENUMs, Seed-Admin
+│   ├── schema.sql               Tabellen mit FKs, Indizes, ENUMs, Seed-Admin
 │   ├── migration_002_versions_delegations.sql
-│   └── migration_003_password_resets.sql
+│   ├── migration_003_password_resets.sql
+│   └── migration_004_permissions_circle_membership.sql
 ├── public/
 │   ├── index.php               Front-Controller (Composer- & Autoloader, Session, Router)
 │   └── .htaccess               Pretty URLs + Security-Header
@@ -170,7 +206,7 @@ logbuch/
 │   ├── Database.php            PDO-Singleton (fetchAll, fetchOne, insert, transaction …)
 │   ├── Router.php              URL-Dispatcher mit {platzhalter}-Support
 │   ├── Controller/
-│   │   ├── BaseController.php  render(), redirect(), flash(), csrf(), currentUser()
+│   │   ├── BaseController.php  render(), redirect(), flash(), csrf(), permissions()
 │   │   ├── AuthController.php  Login / Logout / Passwort-Reset
 │   │   ├── DashboardController.php
 │   │   ├── CircleController.php
@@ -178,19 +214,20 @@ logbuch/
 │   │   ├── AgreementController.php
 │   │   ├── RoleController.php
 │   │   ├── TensionController.php
-│   │   ├── MemberController.php
+│   │   ├── MemberController.php + Kreiszuordnung & Rollenzuweisung
 │   │   └── AdminController.php  + JSON/PDF-Export
 │   ├── Helper/
-│   │   └── Mailer.php           PHPMailer-Wrapper für SMTP-Versand
+│   │   ├── Mailer.php           PHPMailer-Wrapper für SMTP-Versand
+│   │   └── Permissions.php      Zentrale Berechtigungslogik (admin/member/readonly)
 │   ├── Middleware/
 │   │   └── AuthMiddleware.php
 │   └── Model/
-│       ├── CircleModel.php
+│       ├── CircleModel.php      + findMembers() inkl. direkter Zuordnung
 │       ├── MeetingModel.php
 │       ├── AgreementModel.php
-│       ├── RoleModel.php
+│       ├── RoleModel.php        + findAllWithCircle()
 │       ├── TensionModel.php
-│       └── MemberModel.php      + Passwort-Reset-Tokens
+│       └── MemberModel.php      + Kreiszuordnung, Rollenzuweisung, Passwort-Reset
 └── templates/
     ├── layout/main.php          Sidebar-Layout
     ├── layout/bare.php          Login-/Reset-Seiten (ohne Sidebar)
@@ -200,7 +237,7 @@ logbuch/
     ├── dashboard/index.php
     ├── circles/                 index · show · form
     ├── roles/                   index · show · form
-    ├── agreements/              index · show · form
+    ├── agreements/               index · show · form
     ├── meetings/                index · show · form
     ├── tensions/                index · show · form
     ├── members/                 index · show · form
@@ -228,6 +265,8 @@ logbuch/
 | `/circles/{id}/tensions` | Spannungen |
 | `/tensions/{id}` | Spannungs-Detail + Auflösung |
 | `/members` | Mitgliederliste |
+| `/members/{id}` | Mitglieder-Detail (Kreiszugehörigkeit, Rollen, Berechtigung) |
+| `/members/new` | Person anlegen |
 | `/admin` | Administration + Export |
 
 ---

@@ -36,6 +36,28 @@ class RoleModel
         ", [$id]);
     }
 
+    /**
+     * Alle Rollen mit Kreisname — für Auswahllisten (z. B. auf der
+     * Mitglieder-Detailseite "Rolle zuweisen"). Optional auf einen
+     * Kreis eingeschränkt.
+     */
+    public function findAllWithCircle(?int $circleId = null): array
+    {
+        $sql = "
+            SELECT r.id, r.name, r.role_type, c.id AS circle_id, c.name AS circle_name
+            FROM   roles r
+            JOIN   circles c ON r.circle_id = c.id
+        ";
+        $params = [];
+        if ($circleId) {
+            $sql .= " WHERE r.circle_id = ?";
+            $params[] = $circleId;
+        }
+        $sql .= " ORDER BY c.name, r.name";
+
+        return $this->db->fetchAll($sql, $params);
+    }
+
     public function findAssignmentHistory(int $roleId): array
     {
         return $this->db->fetchAll("

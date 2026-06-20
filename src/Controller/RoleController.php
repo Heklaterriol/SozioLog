@@ -57,10 +57,11 @@ class RoleController extends BaseController
     /** GET /circles/{cid}/roles/new */
     public function create(array $params): void
     {
-        $this->requireAdmin();
         $cid    = (int) $params['cid'];
         $circle = (new CircleModel())->findById($cid);
         if (!$circle) { $this->flash('error', 'Kreis nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission($cid, fn($c) => $this->permissions()->canManageRolesIn($c));
 
         $this->render('roles/form', [
             'pageTitle' => 'Neue Rolle in: ' . $circle['name'],
@@ -74,12 +75,13 @@ class RoleController extends BaseController
     /** POST /circles/{cid}/roles */
     public function store(array $params): void
     {
-        $this->requireAdmin();
         $this->verifyCsrf();
 
         $cid    = (int) $params['cid'];
         $circle = (new CircleModel())->findById($cid);
         if (!$circle) { $this->flash('error', 'Kreis nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission($cid, fn($c) => $this->permissions()->canManageRolesIn($c));
 
         // Accountabilities als Array aus zeilenweisem Textarea-Input
         $accRaw = array_filter(
@@ -118,9 +120,10 @@ class RoleController extends BaseController
     /** GET /roles/{id}/edit */
     public function edit(array $params): void
     {
-        $this->requireAdmin();
         $role = $this->roles->findById((int) $params['id']);
         if (!$role) { $this->flash('error', 'Rolle nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission((int) $role['circle_id'], fn($c) => $this->permissions()->canManageRolesIn($c));
 
         $circle = (new CircleModel())->findById($role['circle_id']);
 
@@ -140,12 +143,13 @@ class RoleController extends BaseController
     /** POST /roles/{id} */
     public function update(array $params): void
     {
-        $this->requireAdmin();
         $this->verifyCsrf();
 
         $id   = (int) $params['id'];
         $role = $this->roles->findById($id);
         if (!$role) { $this->flash('error', 'Rolle nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission((int) $role['circle_id'], fn($c) => $this->permissions()->canManageRolesIn($c));
 
         $accRaw = array_filter(
             array_map('trim', explode("\n", $this->inputString('accountabilities_text'))),
@@ -185,10 +189,14 @@ class RoleController extends BaseController
     /** POST /roles/{id}/assign */
     public function assign(array $params): void
     {
-        $this->requireAdmin();
         $this->verifyCsrf();
 
-        $id        = (int) $params['id'];
+        $id   = (int) $params['id'];
+        $role = $this->roles->findById($id);
+        if (!$role) { $this->flash('error', 'Rolle nicht gefunden.'); $this->redirect('/circles'); }
+
+        $this->requireCirclePermission((int) $role['circle_id'], fn($c) => $this->permissions()->canManageRolesIn($c));
+
         $memberId  = $this->inputInt('member_id');
         $startDate = $this->inputDate('start_date') ?? date('Y-m-d');
         $until     = $this->inputDate('elected_until');

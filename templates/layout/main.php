@@ -34,7 +34,7 @@
 
     <ul class="sidebar__nav" role="list">
         <?php foreach ($navItems as $item): ?>
-            <?php if (!empty($item['admin']) && empty($currentUser['is_admin'])) continue; ?>
+            <?php if (!empty($item['admin']) && !$perm->isAdmin()) continue; ?>
             <?php $active = ($currentPath === $base . $item['href']
                           || ($item['href'] !== '/' && str_starts_with($currentPath, $base . $item['href']))); ?>
             <li>
@@ -56,8 +56,12 @@
                 </div>
                 <div class="sidebar__user-info">
                     <span class="sidebar__user-name"><?= htmlspecialchars($currentUser['name']) ?></span>
-                    <?php if ($currentUser['is_admin']): ?>
-                        <span class="sidebar__user-role">Admin</span>
+                    <?php
+                    $levelLabels = ['admin' => 'Admin', 'member' => 'Mitglied', 'readonly' => 'Lesend'];
+                    $levelLabel  = $levelLabels[$perm->level()] ?? null;
+                    ?>
+                    <?php if ($levelLabel): ?>
+                        <span class="sidebar__user-role"><?= $levelLabel ?></span>
                     <?php endif; ?>
                 </div>
             </div>
