@@ -19,6 +19,18 @@ if (file_exists($target)) {
 $errors  = [];
 $success = false;
 
+// Europäische Zeitzonen zuerst, Rest alphabetisch dahinter
+$euZones    = ['Europe/Berlin', 'Europe/Vienna', 'Europe/Zurich', 'Europe/Amsterdam', 'Europe/Brussels',
+               'Europe/Paris', 'Europe/Madrid', 'Europe/Rome', 'Europe/Lisbon', 'Europe/London',
+               'Europe/Dublin', 'Europe/Copenhagen', 'Europe/Stockholm', 'Europe/Oslo', 'Europe/Helsinki',
+               'Europe/Warsaw', 'Europe/Prague', 'Europe/Budapest', 'Europe/Athens', 'Europe/Bucharest',
+               'Europe/Sofia', 'Europe/Kyiv', 'Europe/Istanbul', 'UTC'];
+$allZones   = \DateTimeZone::listIdentifiers();
+$otherZones = array_values(array_diff($allZones, $euZones));
+$timezones  = array_merge($euZones, $otherZones);
+
+$encryptions = ['tls' => 'TLS (empfohlen, Port 587)', 'ssl' => 'SSL (Port 465)', '' => 'Keine'];
+
 // Formularwerte (mit sinnvollen Defaults vorbelegt)
 $v = [
     'app_name'     => 'Soziokratisches Logbuch',
@@ -38,6 +50,7 @@ $v = [
     'mail_from_name'  => '',
     'admin_name'      => 'Administrator',
     'admin_email'     => '',
+    'admin_email_confirm' => '',
     'admin_password'  => '',
 ];
 
@@ -51,6 +64,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($v['admin_email'] === '' || !filter_var($v['admin_email'], FILTER_VALIDATE_EMAIL)) {
         $errors[] = 'Gültige Admin-E-Mail ist erforderlich.';
+    } elseif ($v['admin_email'] !== $v['admin_email_confirm']) {
+        $errors[] = 'Die beiden E-Mail-Adressen stimmen nicht überein.';
     }
     if (strlen($v['admin_password']) < 8) {
         $errors[] = 'Admin-Passwort muss mindestens 8 Zeichen haben.';
@@ -132,7 +147,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     fieldset { border: 1px solid #DDD8CC; border-radius: 8px; margin-bottom: 16px; padding: 16px; }
     legend { font-weight: 600; padding: 0 6px; }
     label { display: block; font-size: .85rem; margin: 10px 0 4px; }
-    input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font: inherit; }
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 36px; }
+    .pw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 4px; font-size: 1rem; line-height: 1; }
     button { background: #1D6F6A; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 1rem; }
     .error { background: #FBE9E7; color: #A13A2E; padding: 10px; border-radius: 6px; margin-bottom: 6px; }
     .success { background: #E8F3E8; color: #2E6B30; padding: 16px; border-radius: 6px; }
@@ -164,7 +182,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label>Basis-URL (ohne abschließenden Slash)</label>
             <input name="base_url" value="<?= htmlspecialchars($v['base_url']) ?>">
             <label>Zeitzone</label>
-            <input name="timezone" value="<?= htmlspecialchars($v['timezone']) ?>">
+            <select name="timezone">
+                <?php foreach ($timezones as $tz): ?>
+                    <option value="<?= htmlspecialchars($tz) ?>" <?= $tz === $v['timezone'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($tz) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </fieldset>
 
         <fieldset>
@@ -187,8 +211,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div><label>Host</label><input name="mail_host" value="<?= htmlspecialchars($v['mail_host']) ?>"></div>
                 <div><label>Port</label><input name="mail_port" value="<?= htmlspecialchars($v['mail_port']) ?>"></div>
             </div>
-            <label>Verschlüsselung (tls / ssl / leer)</label>
-            <input name="mail_encryption" value="<?= htmlspecialchars($v['mail_encryption']) ?>">
+            <label>Verschlüsselung</label>
+            <select name="mail_encryption">
+                <?php foreach ($encryptions as $val => $label): ?>
+                    <option value="<?= htmlspecialchars($val) ?>" <?= $val === $v['mail_encryption'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($label) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
             <label>Benutzername</label>
             <input name="mail_username" value="<?= htmlspecialchars($v['mail_username']) ?>">
             <label>Passwort</label>
@@ -204,9 +234,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <label>Name</label>
             <input name="admin_name" value="<?= htmlspecialchars($v['admin_name']) ?>">
             <label>E-Mail</label>
-            <input name="admin_email" value="<?= htmlspecialchars($v['admin_email']) ?>" required>
+            <input type="email" name="admin_email" value="<?= htmlspecialchars($v['admin_email']) ?>" required>
+            <label>E-Mail bestätigen</label>
+            <input type="email" name="admin_email_confirm" value="<?= htmlspecialchars($v['admin_email_confirm']) ?>" required>
             <label>Passwort (min. 8 Zeichen)</label>
-            <input type="password" name="admin_password" required>
+            <div class="pw-wrap">
+                <input type="password" id="admin_password" name="admin_password" required>
+                <button type="button" class="pw-toggle" onclick="
+                    var i=document.getElementById('admin_password');
+                    i.type = i.type === 'password' ? 'text' : 'password';
+                    this.textContent = i.type === 'password' ? '👁' : '🙈';
+                ">👁</button>
+            </div>
         </fieldset>
 
         <button type="submit">Installieren</button>
