@@ -94,15 +94,7 @@ FLUSH PRIVILEGES;
 Schema einspielen:
 
 ```bash
-mysql -u logbuch_user -p logbuch < database/schema.sql
-```
-
-**Bestehende Installation aktualisieren?** Statt `schema.sql` neu einzuspielen
-reichen die Migrationen:
-
-```bash
-mysql -u logbuch_user -p logbuch < database/migration_003_password_resets.sql
-mysql -u logbuch_user -p logbuch < database/migration_004_permissions_circle_membership.sql
+mysql -u logbuch_user -p logbuch < database/install.sql
 ```
 
 Nach Migration 004 sind alle bestehenden Mitglieder automatisch auf
@@ -195,10 +187,7 @@ logbuch/
 │   ├── config.php              Standard-Konfiguration (db, app, session, mail)
 │   └── config.local.php        Lokale Überschreibung — NICHT ins Repository!
 ├── database/
-│   ├── schema.sql               Tabellen mit FKs, Indizes, ENUMs, Seed-Admin
-│   ├── migration_002_versions_delegations.sql
-│   ├── migration_003_password_resets.sql
-│   └── migration_004_permissions_circle_membership.sql
+│   └── install.sql              Vollständiges Schema (12 Tabellen, alle FKs, Seed-Admin)
 ├── public/
 │   ├── index.php               Front-Controller (Composer- & Autoloader, Session, Router)
 │   └── .htaccess               Pretty URLs + Security-Header

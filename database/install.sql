@@ -1,13 +1,23 @@
 -- ============================================================
---  Soziokratisches Logbuch — Datenbankschema
---  Zeichensatz: utf8mb4 / utf8mb4_unicode_ci
+--  Soziokratisches Logbuch — Vollständiges Installationsschema
+--  Erstinstallation: mysql -u user -p logbuch < database/install.sql
+--
+--  Enthält alle Tabellen in der richtigen Reihenfolge (FK-safe),
+--  zusammengeführt aus:
+--    schema.sql
+--    migration_002_versions_delegations.sql
+--    migration_003_password_resets.sql
+--    migration_004_permissions_circle_membership.sql
+--
+--  Für bestehende Installationen stattdessen die einzelnen
+--  Migrations-Dateien einspielen (migration_002 bis 004).
 -- ============================================================
 
 SET NAMES utf8mb4;
 SET foreign_key_checks = 0;
 
 -- ------------------------------------------------------------
---  1. members  (Personen / Benutzer)
+--  1. members
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `members` (
     `id`               INT UNSIGNED    NOT NULL AUTO_INCREMENT,
@@ -15,8 +25,9 @@ CREATE TABLE IF NOT EXISTS `members` (
     `email`            VARCHAR(180)    NOT NULL,
     `password_hash`    VARCHAR(255)    NOT NULL,
     `is_admin`         TINYINT(1)      NOT NULL DEFAULT 0,
-    `permission_level` ENUM('admin','member','readonly') NOT NULL DEFAULT 'member'
-                        COMMENT 'admin = alles | member = lesen überall, verwalten im eigenen Kreis | readonly = nur lesen',
+    `permission_level` ENUM('admin','member','readonly')
+                                       NOT NULL DEFAULT 'member'
+        COMMENT 'admin = alles | member = lesen überall + verwalten im eigenen Kreis | readonly = nur lesen',
     `created_at`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
@@ -24,9 +35,9 @@ CREATE TABLE IF NOT EXISTS `members` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  1b. password_resets  (Tokens für "Passwort vergessen")
---  Es wird nur der SHA-256-Hash des Tokens gespeichert, nicht
---  der Token selbst — der Klartext steht nur in der E-Mail.
+--  2. password_resets
+--  Nur SHA-256-Hash des Tokens wird gespeichert — Klartext
+--  landet ausschließlich in der Reset-E-Mail.
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `password_resets` (
     `id`           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -43,7 +54,11 @@ CREATE TABLE IF NOT EXISTS `password_resets` (
     CONSTRAINT `fk_pwreset_member`
         FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
         ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Tokens für "Passwort vergessen"-Links';
+
+-- ------------------------------------------------------------
+--  3. circles  (selbstreferenzierend)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `circles` (
     `id`          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
@@ -63,11 +78,9 @@ CREATE TABLE IF NOT EXISTS `circles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  2b. circle_memberships
+--  4. circle_memberships
 --  Direkte Kreiszugehörigkeit (unabhängig von Rollen).
---  Bestimmt u.a. den "eigenen Kreis" für die Berechtigungsstufe
---  'member' (Verwalten erlaubt) und ist die Grundlage für die
---  Kreiszuweisung auf der Mitglieder-Detailseite.
+--  Definiert den „eigenen Kreis" für Berechtigungsstufe 'member'.
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `circle_memberships` (
     `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -84,10 +97,11 @@ CREATE TABLE IF NOT EXISTS `circle_memberships` (
     CONSTRAINT `fk_cm_circle`
         FOREIGN KEY (`circle_id`) REFERENCES `circles` (`id`)
         ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Direkte Kreiszugehörigkeit (unabhängig von Rollen)';
 
 -- ------------------------------------------------------------
---  3. roles  (Rollen innerhalb eines Kreises)
+--  5. roles
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `roles` (
     `id`               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -115,7 +129,7 @@ CREATE TABLE IF NOT EXISTS `roles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  4. role_assignments  (Wer hat wann welche Rolle — N:M)
+--  6. role_assignments  (N:M mit Zeitraum)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `role_assignments` (
     `id`            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -138,7 +152,7 @@ CREATE TABLE IF NOT EXISTS `role_assignments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  5. meetings  (Protokoll-Kopf)
+--  7. meetings
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `meetings` (
     `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -173,7 +187,7 @@ CREATE TABLE IF NOT EXISTS `meetings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  6. agenda_items  (Agenda-Punkte eines Meetings)
+--  8. agenda_items
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `agenda_items` (
     `id`         INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -196,11 +210,11 @@ CREATE TABLE IF NOT EXISTS `agenda_items` (
     CONSTRAINT `fk_ai_meeting`
         FOREIGN KEY (`meeting_id`) REFERENCES `meetings` (`id`)
         ON DELETE CASCADE ON UPDATE CASCADE
-    -- fk_ai_tension wird nach tensions-Tabelle gesetzt (s.u.)
+    -- fk_ai_tension folgt nach tensions (zirkuläre Abhängigkeit)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  7. tensions  (Spannungen / Treiber-Backlog)
+--  9. tensions
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `tensions` (
     `id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -234,14 +248,14 @@ CREATE TABLE IF NOT EXISTS `tensions` (
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Nachträgliche FK-Constraints (zirkuläre Abhängigkeiten)
+-- FK agenda_items → tensions (zirkuläre Abhängigkeit, daher nachträglich)
 ALTER TABLE `agenda_items`
     ADD CONSTRAINT `fk_ai_tension`
         FOREIGN KEY (`tension_id`) REFERENCES `tensions` (`id`)
         ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- ------------------------------------------------------------
---  8. agreements  (Vereinbarungen / Beschlüsse)
+--  10. agreements
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `agreements` (
     `id`           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -277,26 +291,66 @@ CREATE TABLE IF NOT EXISTS `agreements` (
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- FK tensions → agreements (nachträglich)
+-- FK tensions → agreements (zirkuläre Abhängigkeit, daher nachträglich)
 ALTER TABLE `tensions`
     ADD CONSTRAINT `fk_tensions_resolved`
         FOREIGN KEY (`resolved_by`) REFERENCES `agreements` (`id`)
         ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- ------------------------------------------------------------
---  9. delegations  (Delegationen zwischen Kreisen)
+--  11. agreement_versions
+--  Snapshot vor jeder Änderung — automatisch via AgreementModel.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `agreement_versions` (
+    `id`           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `agreement_id` INT UNSIGNED  NOT NULL,
+    `version`      SMALLINT      NOT NULL DEFAULT 1  COMMENT 'Laufende Versionsnummer',
+    `title`        VARCHAR(255)  NOT NULL,
+    `driver`       TEXT                   DEFAULT NULL,
+    `body`         TEXT                   DEFAULT NULL,
+    `agreed_at`    DATE          NOT NULL,
+    `review_date`  DATE                   DEFAULT NULL,
+    `status`       ENUM(
+                       'active',
+                       'expired',
+                       'review_due',
+                       'draft'
+                   ) NOT NULL DEFAULT 'active',
+    `changed_by`   INT UNSIGNED           DEFAULT NULL  COMMENT 'FK → members.id',
+    `change_note`  VARCHAR(255)           DEFAULT NULL  COMMENT 'Optionaler Änderungsgrund',
+    `created_at`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_agv_version` (`agreement_id`, `version`),
+    KEY `idx_agv_agreement` (`agreement_id`),
+    KEY `idx_agv_changed_by` (`changed_by`),
+    CONSTRAINT `fk_agv_agreement`
+        FOREIGN KEY (`agreement_id`) REFERENCES `agreements` (`id`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_agv_changed_by`
+        FOREIGN KEY (`changed_by`) REFERENCES `members` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Vollständige Versionshistorie jeder Vereinbarung';
+
+-- ------------------------------------------------------------
+--  12. delegations
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `delegations` (
     `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     `from_circle`    INT UNSIGNED  NOT NULL,
     `to_circle`      INT UNSIGNED  NOT NULL,
     `description`    TEXT                   DEFAULT NULL,
+    `notes`          TEXT                   DEFAULT NULL  COMMENT 'Freitext-Beschreibung der Delegation',
+    `status`         ENUM('active','ended') NOT NULL DEFAULT 'active',
+    `started_at`     DATE                   DEFAULT NULL,
+    `ended_at`       DATE                   DEFAULT NULL,
     `rep_link_role`  INT UNSIGNED           DEFAULT NULL  COMMENT 'Repräsentanten-Link-Rolle',
     `del_link_role`  INT UNSIGNED           DEFAULT NULL  COMMENT 'Delegierten-Link-Rolle',
     `created_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    KEY `idx_del_from` (`from_circle`),
-    KEY `idx_del_to`   (`to_circle`),
+    KEY `idx_del_from`   (`from_circle`),
+    KEY `idx_del_to`     (`to_circle`),
+    KEY `idx_del_status` (`status`),
     CONSTRAINT `fk_del_from`
         FOREIGN KEY (`from_circle`) REFERENCES `circles` (`id`)
         ON DELETE CASCADE ON UPDATE CASCADE,
@@ -314,9 +368,16 @@ CREATE TABLE IF NOT EXISTS `delegations` (
 SET foreign_key_checks = 1;
 
 -- ------------------------------------------------------------
---  Seed-Daten: erster Admin-Benutzer (Passwort ändern!)
---  password_hash = bcrypt('changeme')
+--  Seed: erster Admin-Benutzer
+--  Passwort vor dem ersten Login ändern!
+--  Hash erzeugen: php -r "echo password_hash('neues_passwort', PASSWORD_BCRYPT);"
+--  Dann: UPDATE members SET password_hash='$2y$...' WHERE id=1;
 -- ------------------------------------------------------------
 INSERT INTO `members` (`name`, `email`, `password_hash`, `is_admin`, `permission_level`)
-VALUES ('Administrator', 'admin@example.org',
-        '$2y$12$placeholder_change_this_hash_immediately', 1, 'admin');
+VALUES (
+    'Administrator',
+    'admin@example.org',
+    '$2y$12$placeholder_change_this_hash_immediately',
+    1,
+    'admin'
+);
