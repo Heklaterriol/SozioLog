@@ -32,9 +32,14 @@ spl_autoload_register(function (string $class): void {
 });
 
 // ------------------------------------------------------------------
-//  Konfiguration laden
+//  Konfiguration laden — fehlt sie, zur Installation weiterleiten
 // ------------------------------------------------------------------
-$config = require APP_ROOT . '/config/config.php';
+$configFile = APP_ROOT . '/config/config.php';
+if (!file_exists($configFile)) {
+    require APP_ROOT . '/public/install.php';
+    exit;
+}
+$config = require $configFile;
 $local  = APP_ROOT . '/config/config.local.php';
 if (file_exists($local)) {
     $config = array_replace_recursive($config, require $local);

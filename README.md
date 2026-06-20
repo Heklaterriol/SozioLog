@@ -1,6 +1,6 @@
 # Soziokratisches Logbuch
 
-Webbasiertes Logbuch für Organisationen nach **Sociocracy**.  
+Webbasiertes Logbuch für Organisationen nach **Soziokratie**.  
 PHP 8.1+ · MySQL 8+ · Apache 2.4+ · kein Framework · Composer für Passwort-Reset (PHPMailer)
 
 ---
@@ -67,22 +67,16 @@ zu müssen.
 
 ### 1. Dateien hochladen
 
-Lade das Projektverzeichnis auf deinen Server.  
-**Empfehlung:** `DocumentRoot` direkt auf `public/` setzen.
+Lade das Projektverzeichnis auf deinen Server. `DocumentRoot` auf `public/` setzen.
 
-```
-/var/www/logbuch/
-├── public/          ← DocumentRoot
-│   ├── index.php
-│   ├── .htaccess
-│   └── assets/
-├── src/
-├── config/
-├── templates/
-└── database/
+### 2. Composer-Pakete installieren
+
+```bash
+composer install
+composer require mpdf/mpdf   # optional, für PDF-Export
 ```
 
-### 2. Datenbank anlegen
+### 3. Leere Datenbank anlegen
 
 ```sql
 CREATE DATABASE logbuch CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -91,88 +85,13 @@ GRANT ALL PRIVILEGES ON logbuch.* TO 'logbuch_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-Schema einspielen:
+### 4. Installer aufrufen
 
-```bash
-mysql -u logbuch_user -p logbuch < database/install.sql
-```
-
-Nach Migration 004 sind alle bestehenden Mitglieder automatisch auf
-**'member'** gesetzt (bisherige Admins auf **'admin'**) — niemand verliert
-Zugriff, aber neue Mitglieder können erst im eigenen Kreis verwalten,
-sobald sie auf ihrer Mitglieder-Detailseite einem Kreis zugeordnet wurden.
-
-### 3. Konfiguration
-
-```bash
-cp config/config.php config/config.local.php
-nano config/config.local.php
-```
-
-Mindest-Anpassungen:
-
-```php
-return [
-    'db' => [
-        'host' => 'localhost',
-        'name' => 'logbuch',
-        'user' => 'logbuch_user',
-        'pass' => 'sicheres_passwort',
-    ],
-    'app' => [
-        'name'     => 'Meine Organisation',
-        'base_url' => 'https://logbuch.example.org',
-        'debug'    => false,
-    ],
-    'mail' => [
-        'host'       => 'smtp.example.org',
-        'port'       => 587,
-        'encryption' => 'tls',
-        'username'   => 'logbuch@example.org',
-        'password'   => 'smtp_passwort',
-        'from_email' => 'logbuch@example.org',
-        'from_name'  => 'Meine Organisation',
-    ],
-];
-```
-
-### 4. Composer-Pakete installieren (Pflicht)
-
-`PHPMailer` wird für den Versand der Passwort-Reset-Mails benötigt:
-
-```bash
-cd /pfad/zum/logbuch
-composer install
-```
-
-Das legt einen `vendor/`-Ordner an, der automatisch eingebunden wird.
-Ohne diesen Schritt funktioniert nur „Passwort vergessen“ nicht — der
-Rest der Anwendung läuft trotzdem.
-
-### 5. Admin-Passwort setzen
-
-```bash
-# Hash erzeugen:
-php -r "echo password_hash('mein_passwort', PASSWORD_BCRYPT);"
-```
-
-```sql
-UPDATE members SET password_hash = '$2y$12$...' WHERE id = 1;
-UPDATE members SET email = 'admin@meineorg.de'  WHERE id = 1;
-```
-
-Alternativ kann das Passwort jetzt auch bequem über **„Passwort
-vergessen?“** auf der Login-Seite gesetzt werden, sobald SMTP
-konfiguriert ist.
-
-### 6. PDF-Export (optional)
-
-```bash
-cd /pfad/zum/logbuch
-composer require mpdf/mpdf
-```
-
-Danach ist der «PDF herunterladen»-Button unter `/admin` aktiv.
+Im Browser die Seite öffnen — solange `config/config.php` fehlt, erscheint
+automatisch der Installer. Dort Datenbank-, SMTP- und Admin-Zugangsdaten
+eintragen. Der Installer schreibt `config/config.php`, spielt
+`database/install.sql` ein und legt das Admin-Konto an. Danach ist die
+Installer-Seite gesperrt.
 
 ---
 
@@ -184,12 +103,14 @@ logbuch/
 │   ├── css/app.css              Design-System (CSS Custom Properties, alle Komponenten)
 │   └── js/app.js               Tab-Umschaltung, Flash-Auto-close, Textarea-Resize
 ├── config/
-│   ├── config.php              Standard-Konfiguration (db, app, session, mail)
+│   ├── sample.config.php       Vorlage — Installer erzeugt daraus config.php
+│   └── config.php              wird vom Installer erzeugt, NICHT im Git
 │   └── config.local.php        Lokale Überschreibung — NICHT ins Repository!
 ├── database/
-│   └── install.sql              Vollständiges Schema (12 Tabellen, alle FKs, Seed-Admin)
+│   └── install.sql              Vollständiges Schema (Erstinstallation)
 ├── public/
 │   ├── index.php               Front-Controller (Composer- & Autoloader, Session, Router)
+│   ├── install.php             Installer — läuft nur solange config.php fehlt
 │   └── .htaccess               Pretty URLs + Security-Header
 ├── src/
 │   ├── Database.php            PDO-Singleton (fetchAll, fetchOne, insert, transaction …)
