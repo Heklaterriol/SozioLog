@@ -2,15 +2,8 @@
 --  Soziokratisches Logbuch — Vollständiges Installationsschema
 --  Erstinstallation: mysql -u user -p logbuch < database/install.sql
 --
---  Enthält alle Tabellen in der richtigen Reihenfolge (FK-safe),
---  zusammengeführt aus:
---    schema.sql
---    migration_002_versions_delegations.sql
---    migration_003_password_resets.sql
---    migration_004_permissions_circle_membership.sql
---
---  Für bestehende Installationen stattdessen die einzelnen
---  Migrations-Dateien einspielen (migration_002 bis 004).
+--  Login erfolgt ausschließlich per Nextcloud-SSO (OAuth2),
+--  siehe config['nextcloud'].
 -- ============================================================
 
 SET NAMES utf8mb4;
@@ -28,43 +21,23 @@ CREATE TABLE IF NOT EXISTS `members` (
     `permission_level` ENUM('admin','member','readonly')
                                        NOT NULL DEFAULT 'member'
         COMMENT 'admin = alles | member = lesen überall + verwalten im eigenen Kreis | readonly = nur lesen',
+    `nextcloud_user_id` VARCHAR(180)            DEFAULT NULL
+        COMMENT 'Nextcloud-Benutzer-ID (SSO-Verknüpfung)',
     `created_at`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_members_email` (`email`)
+    UNIQUE KEY `uq_members_email` (`email`),
+    UNIQUE KEY `uq_members_nextcloud` (`nextcloud_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  2. password_resets
---  Nur SHA-256-Hash des Tokens wird gespeichert — Klartext
---  landet ausschließlich in der Reset-E-Mail.
--- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `password_resets` (
-    `id`           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    `member_id`    INT UNSIGNED  NOT NULL,
-    `token_hash`   CHAR(64)      NOT NULL  COMMENT 'SHA-256 Hex-Hash des Reset-Tokens',
-    `expires_at`   DATETIME      NOT NULL,
-    `used_at`      DATETIME               DEFAULT NULL  COMMENT 'NULL = noch nicht eingelöst',
-    `created_at`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `requested_ip` VARCHAR(45)            DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_pwreset_token` (`token_hash`),
-    KEY `idx_pwreset_member`  (`member_id`),
-    KEY `idx_pwreset_expires` (`expires_at`),
-    CONSTRAINT `fk_pwreset_member`
-        FOREIGN KEY (`member_id`) REFERENCES `members` (`id`)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  COMMENT='Tokens für "Passwort vergessen"-Links';
-
--- ------------------------------------------------------------
---  3. circles  (selbstreferenzierend)
+--  2. circles  (selbstreferenzierend)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `circles` (
     `id`          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
     `parent_id`   INT UNSIGNED             DEFAULT NULL,
     `name`        VARCHAR(180)    NOT NULL,
-    `driver`      TEXT                     DEFAULT NULL  COMMENT 'S3: Treiber / Organisationstreiber',
+    `driver`      TEXT                     DEFAULT NULL  COMMENT 'Treiber / Organisationstreiber',
     `domain`      TEXT                     DEFAULT NULL  COMMENT 'Domäne der Autorität',
     `purpose`     TEXT                     DEFAULT NULL,
     `status`      ENUM('active','archived') NOT NULL DEFAULT 'active',
@@ -78,7 +51,7 @@ CREATE TABLE IF NOT EXISTS `circles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  4. circle_memberships
+--  3. circle_memberships
 --  Direkte Kreiszugehörigkeit (unabhängig von Rollen).
 --  Definiert den „eigenen Kreis" für Berechtigungsstufe 'member'.
 -- ------------------------------------------------------------
@@ -101,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `circle_memberships` (
   COMMENT='Direkte Kreiszugehörigkeit (unabhängig von Rollen)';
 
 -- ------------------------------------------------------------
---  5. roles
+--  4. roles
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `roles` (
     `id`               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -129,7 +102,7 @@ CREATE TABLE IF NOT EXISTS `roles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  6. role_assignments  (N:M mit Zeitraum)
+--  5. role_assignments  (N:M mit Zeitraum)
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `role_assignments` (
     `id`            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -152,7 +125,7 @@ CREATE TABLE IF NOT EXISTS `role_assignments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  7. meetings
+--  6. meetings
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `meetings` (
     `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -187,7 +160,7 @@ CREATE TABLE IF NOT EXISTS `meetings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  8. agenda_items
+--  7. agenda_items
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `agenda_items` (
     `id`         INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -214,7 +187,7 @@ CREATE TABLE IF NOT EXISTS `agenda_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
---  9. tensions
+--  8. tensions
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `tensions` (
     `id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -255,7 +228,7 @@ ALTER TABLE `agenda_items`
         ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- ------------------------------------------------------------
---  10. agreements
+--  9. agreements
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `agreements` (
     `id`           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -298,7 +271,7 @@ ALTER TABLE `tensions`
         ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- ------------------------------------------------------------
---  11. agreement_versions
+--  10. agreement_versions
 --  Snapshot vor jeder Änderung — automatisch via AgreementModel.
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `agreement_versions` (
@@ -333,7 +306,7 @@ CREATE TABLE IF NOT EXISTS `agreement_versions` (
   COMMENT='Vollständige Versionshistorie jeder Vereinbarung';
 
 -- ------------------------------------------------------------
---  12. delegations
+--  11. delegations
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `delegations` (
     `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -368,10 +341,12 @@ CREATE TABLE IF NOT EXISTS `delegations` (
 SET foreign_key_checks = 1;
 
 -- ------------------------------------------------------------
---  Seed: erster Admin-Benutzer
---  Passwort vor dem ersten Login ändern!
---  Hash erzeugen: php -r "echo password_hash('neues_passwort', PASSWORD_BCRYPT);"
---  Dann: UPDATE members SET password_hash='$2y$...' WHERE id=1;
+--  Seed: Platzhalter-Admin
+--  Wird vom Installer (public/install.php) automatisch entfernt
+--  und durch den echten, per Nextcloud verknüpften Admin ersetzt.
+--  Bei manueller Installation: members-Zeile löschen und stattdessen
+--  ein Mitglied per erstem Nextcloud-Login anlegen lassen, danach
+--  permission_level manuell auf 'admin' setzen.
 -- ------------------------------------------------------------
 INSERT INTO `members` (`name`, `email`, `password_hash`, `is_admin`, `permission_level`)
 VALUES (

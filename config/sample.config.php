@@ -43,7 +43,8 @@ return [
     ],
 
     // ----------------------------------------------------------
-    //  E-Mail-Versand (SMTP, für Passwort-Reset etc.)
+    //  E-Mail-Versand (SMTP) — aktuell ungenutzt seit Umstellung
+    //  auf Nextcloud-Login, für künftige Benachrichtigungen.
     //  In config.local.php überschreiben!
     // ----------------------------------------------------------
     'mail' => [
@@ -54,8 +55,21 @@ return [
         'password'    => '',
         'from_email'  => 'logbuch@example.org',
         'from_name'   => 'Soziokratisches Logbuch',
-        // Reset-Link verfällt nach dieser Zeit (Sekunden)
-        'reset_token_ttl' => 3600,
+    ],
+
+    // ----------------------------------------------------------
+    //  Nextcloud SSO (OAuth2) — alleinige Login-Methode
+    //  Client unter Nextcloud-Einstellungen → Sicherheit → OAuth2
+    //  anlegen, Redirect-URI: {app.base_url}/auth/nextcloud/callback
+    // ----------------------------------------------------------
+    'nextcloud' => [
+        'base_url'      => 'https://cloud.example.org',  // kein trailing slash
+        // true, wenn KEINE Pretty-URLs aktiv sind (URLs mit /index.php/)
+        'use_index_php' => false,
+        'client_id'     => '',
+        'client_secret' => '',
+        // Nur Mitglieder dieser Nextcloud-Gruppe dürfen sich einloggen
+        'required_group' => '',
     ],
 
     // ----------------------------------------------------------

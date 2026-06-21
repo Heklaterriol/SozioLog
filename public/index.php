@@ -141,12 +141,9 @@ $router->post('/members/{id}/roles/{assignmentId}/end', 'Member@endRole');
 
 // Auth
 $router->get('/login',                        'Auth@loginForm');
-$router->post('/login',                       'Auth@login');
 $router->post('/logout',                      'Auth@logout');
-$router->get('/password/forgot',              'Auth@forgotPasswordForm');
-$router->post('/password/forgot',             'Auth@forgotPassword');
-$router->get('/password/reset/{token}',       'Auth@resetPasswordForm');
-$router->post('/password/reset/{token}',      'Auth@resetPassword');
+$router->get('/auth/nextcloud',                'Auth@nextcloudStart');
+$router->get('/auth/nextcloud/callback',       'Auth@nextcloudCallback');
 
 // Vereinbarungs-Versionen
 $router->get('/agreements/{id}/versions',                        'Agreement@versions');

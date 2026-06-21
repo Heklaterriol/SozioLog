@@ -3,12 +3,12 @@
     "description": "Soziokratisches Logbuch",
     "type": "project",
     "require": {
-        "php": ">=8.3",
-        "phpmailer/phpmailer": "^6.9"
+        "php": ">=8.3"
     },
     "require-dev": {},
     "suggest": {
-        "mpdf/mpdf": "Für den PDF-Export unter /admin — composer require mpdf/mpdf"
+        "mpdf/mpdf": "Für den PDF-Export unter /admin — composer require mpdf/mpdf",
+        "phpmailer/phpmailer": "Für künftige E-Mail-Benachrichtigungen (aktuell ungenutzt) — composer require phpmailer/phpmailer"
     },
     "autoload": {
         "psr-4": {

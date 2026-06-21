@@ -102,14 +102,11 @@ class Router
             return;
         }
 
-        // Auth-Check (außer Login- und Passwort-Reset-Seiten)
+        // Auth-Check (außer Login- und Nextcloud-OAuth-Seiten)
         $publicHandlers = [
             'Auth@loginForm',
-            'Auth@login',
-            'Auth@forgotPasswordForm',
-            'Auth@forgotPassword',
-            'Auth@resetPasswordForm',
-            'Auth@resetPassword',
+            'Auth@nextcloudStart',
+            'Auth@nextcloudCallback',
         ];
         if (!in_array($handler, $publicHandlers, true)) {
             $auth = new Middleware\AuthMiddleware();

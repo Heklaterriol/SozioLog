@@ -1,7 +1,7 @@
 # Soziokratisches Logbuch
 
 Webbasiertes Logbuch für soziokratisch organisierte Gruppen und Organisationen.  
-PHP 8.3+ · MySQL 8+ / MariaDB 10.2.7+ · Apache 2.4+ · kein Framework · Composer für Passwort-Reset (PHPMailer)
+PHP 8.3+ · MySQL 8+ / MariaDB 10.2.7+ · Apache 2.4+ · kein Framework · Anmeldung per Nextcloud-SSO
 
 ---
 
@@ -15,7 +15,7 @@ PHP 8.3+ · MySQL 8+ / MariaDB 10.2.7+ · Apache 2.4+ · kein Framework · Compo
 | **Meetings** | Protokoll mit Agenda-Punkten, Teilnehmenden, Moderator·in & Protokollant·in |
 | **Spannungen** | Einreichen, Status-Workflow, Auflösung via Vereinbarung |
 | **Dashboard** | Kennzahlen, anstehende Meetings, Review-fällige Vereinbarungen, unbesetzte Rollen |
-| **Mitglieder** | Berechtigungsstufen (Admin/Mitglied/Lesend), Kreiszugehörigkeit, Rollenzuweisung mit Befristung, Passwort-Hashing, Passwort-Reset per E-Mail |
+| **Mitglieder** | Berechtigungsstufen (Admin/Mitglied/Lesend), Kreiszugehörigkeit, Rollenzuweisung mit Befristung, Anmeldung per Nextcloud-SSO |
 | **Export** | JSON-Dump (sofort) · PDF-Logbuch via mPDF (optional) |
 
 **Sicherheit:** CSRF-Schutz auf allen POST-Formularen, Session-Auth, Prepared Statements (PDO), Security-Header per `.htaccess`
@@ -55,11 +55,11 @@ zu müssen.
 
 | Komponente | Version |
 |---|---|
-| PHP | ≥ 8.3, Erweiterung `pdo_mysql` |
+| PHP | ≥ 8.3, Erweiterungen `pdo_mysql`, `curl` |
 | MySQL / MariaDB | ≥ 8.0 / ≥ 10.5 |
 | Apache | ≥ 2.4 mit `mod_rewrite` |
-| Composer | **erforderlich** für Passwort-Reset (PHPMailer), optional für PDF-Export (mPDF) |
-| SMTP-Zugang | für den Versand der Passwort-Reset-Mails (eigener Mailserver, Gmail, Mailgun, …) |
+| Composer | optional, nur für PDF-Export (mPDF) |
+| Nextcloud-Instanz | für die Anmeldung (SSO), mit OAuth2-Client (Admin-Einstellungen → Sicherheit) |
 
 ---
 
@@ -69,11 +69,11 @@ zu müssen.
 
 Lade das Projektverzeichnis auf deinen Server. `DocumentRoot` auf `public/` setzen.
 
-### 2. Composer-Pakete installieren
+### 2. Composer-Pakete installieren (optional)
 
 ```bash
-composer install
-composer require mpdf/mpdf   # optional, für PDF-Export
+composer install               # nur falls composer.lock Pakete enthält
+composer require mpdf/mpdf      # optional, für PDF-Export
 ```
 
 ### 3. Leere Datenbank anlegen
@@ -85,10 +85,16 @@ GRANT ALL PRIVILEGES ON logbuch.* TO 'logbuch_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
-### 4. Installer aufrufen
+### 4. Nextcloud OAuth2-Client anlegen
+
+In Nextcloud: Einstellungen → Sicherheit → OAuth2-Client hinzufügen.
+Redirect-URI: `https://<deine-soziolog-url>/auth/nextcloud/callback`.
+Client-ID und Client-Secret notieren — werden im nächsten Schritt gebraucht.
+
+### 5. Installer aufrufen
 
 Im Browser die Seite öffnen — solange `config/config.php` fehlt, erscheint
-automatisch der Installer. Dort Datenbank-, SMTP- und Admin-Zugangsdaten
+automatisch der Installer. Dort Datenbank-, Nextcloud- und Admin-Zugangsdaten
 eintragen. Der Installer schreibt `config/config.php`, spielt
 `database/install.sql` ein und legt das Admin-Konto an. Danach ist die
 Installer-Seite gesperrt.
@@ -117,7 +123,7 @@ logbuch/
 │   ├── Router.php              URL-Dispatcher mit {platzhalter}-Support
 │   ├── Controller/
 │   │   ├── BaseController.php  render(), redirect(), flash(), csrf(), permissions()
-│   │   ├── AuthController.php  Login / Logout / Passwort-Reset
+│   │   ├── AuthController.php  Login / Logout / Nextcloud-OAuth2 (SSO)
 │   │   ├── DashboardController.php
 │   │   ├── CircleController.php
 │   │   ├── MeetingController.php
@@ -127,7 +133,7 @@ logbuch/
 │   │   ├── MemberController.php + Kreiszuordnung & Rollenzuweisung
 │   │   └── AdminController.php  + JSON/PDF-Export
 │   ├── Helper/
-│   │   ├── Mailer.php           PHPMailer-Wrapper für SMTP-Versand
+│   │   ├── Mailer.php           PHPMailer-Wrapper, aktuell ungenutzt
 │   │   └── Permissions.php      Zentrale Berechtigungslogik (admin/member/readonly)
 │   ├── Middleware/
 │   │   └── AuthMiddleware.php
@@ -137,13 +143,11 @@ logbuch/
 │       ├── AgreementModel.php
 │       ├── RoleModel.php        + findAllWithCircle()
 │       ├── TensionModel.php
-│       └── MemberModel.php      + Kreiszuordnung, Rollenzuweisung, Passwort-Reset
+│       └── MemberModel.php      + Kreiszuordnung, Rollenzuweisung, Nextcloud-Verknüpfung
 └── templates/
     ├── layout/main.php          Sidebar-Layout
-    ├── layout/bare.php          Login-/Reset-Seiten (ohne Sidebar)
-    ├── auth/login.php
-    ├── auth/forgot_password.php
-    ├── auth/reset_password.php
+    ├── layout/bare.php          Login-Seite (ohne Sidebar)
+    ├── auth/login.php           Nextcloud-Login-Button
     ├── dashboard/index.php
     ├── circles/                 index · show · form
     ├── roles/                   index · show · form
@@ -161,9 +165,9 @@ logbuch/
 | URL | Beschreibung |
 |---|---|
 | `/` | Dashboard |
-| `/login` | Anmelden |
-| `/password/forgot` | Passwort vergessen — E-Mail anfordern |
-| `/password/reset/{token}` | Neues Passwort festlegen (Link aus der E-Mail) |
+| `/login` | Anmelden (Nextcloud-Button) |
+| `/auth/nextcloud` | Startet den Nextcloud-OAuth2-Flow |
+| `/auth/nextcloud/callback` | OAuth2-Rücksprung von Nextcloud |
 | `/circles` | Kreisbaum |
 | `/circles/{id}` | Kreis-Detail (Tabs: Rollen, Vereinbarungen, Meetings, Spannungen, Mitglieder) |
 | `/circles/{id}/roles` | Rollen eines Kreises |
@@ -187,9 +191,8 @@ logbuch/
 - `exports/` und `database/` dürfen vom Web nicht erreichbar sein
 - In Produktion: `'debug' => false`
 - HTTPS nutzen (HSTS in `.htaccess` ist vorbereitet, nur auskommentiert)
-- **Passwort-Reset:** Tokens werden nur als SHA-256-Hash in der Tabelle
-  `password_resets` gespeichert, sind standardmäßig 60 Minuten gültig,
-  einmal verwendbar und werden bei jeder neuen Anfrage für dasselbe
-  Konto entwertet. Die „Passwort vergessen“-Antwort ist absichtlich
-  immer identisch (unabhängig davon, ob die E-Mail existiert), damit
-  sich keine registrierten Adressen erraten lassen.
+- **Nextcloud-SSO:** Das OAuth2-`state`-Token verhindert CSRF beim Login.
+  Nextclouds OAuth2 kennt keine Scopes — ein Access-Token hat vollen
+  Zugriff auf den Nextcloud-Account des Nutzers. SozioLog nutzt den
+  Token nur einmalig zum Abruf von Name/E-Mail/Gruppen über die
+  OCS-User-API und speichert ihn nicht.

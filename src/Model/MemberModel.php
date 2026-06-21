@@ -11,7 +11,7 @@ class MemberModel
     public function findAll(): array
     {
         return $this->db->fetchAll(
-            "SELECT id, name, email, is_admin, permission_level, created_at FROM members ORDER BY name"
+            "SELECT id, name, email, is_admin, permission_level, nextcloud_user_id, created_at FROM members ORDER BY name"
         );
     }
 
@@ -32,7 +32,7 @@ class MemberModel
     public function findById(int $id): ?array
     {
         return $this->db->fetchOne(
-            "SELECT id, name, email, is_admin, permission_level, created_at FROM members WHERE id = ?",
+            "SELECT id, name, email, is_admin, permission_level, nextcloud_user_id, created_at FROM members WHERE id = ?",
             [$id]
         );
     }
@@ -75,7 +75,9 @@ class MemberModel
         ", [
             $data['name'],
             strtolower(trim($data['email'])),
-            password_hash($data['password'], PASSWORD_BCRYPT),
+            // Login erfolgt ausschließlich per Nextcloud-SSO — kein
+            // lokales Passwort nötig, zufälliger nie genutzter Hash.
+            password_hash(bin2hex(random_bytes(32)), PASSWORD_BCRYPT),
             ($data['permission_level'] ?? 'member') === 'admin' ? 1 : 0,
             $data['permission_level'] ?? 'member',
         ]);
@@ -93,14 +95,6 @@ class MemberModel
                 $data['permission_level'] ?? 'member',
                 $id,
             ]
-        );
-    }
-
-    public function updatePassword(int $id, string $newPassword): void
-    {
-        $this->db->execute(
-            "UPDATE members SET password_hash = ? WHERE id = ?",
-            [password_hash($newPassword, PASSWORD_BCRYPT), $id]
         );
     }
 
@@ -236,60 +230,49 @@ class MemberModel
     }
 
     // ------------------------------------------------------------------
-    //  Passwort-Reset
+    //  Nextcloud-SSO — Verknüpfung & automatische Anlage
     // ------------------------------------------------------------------
 
     /**
-     * Legt einen neuen Reset-Token an und gibt den KLARTEXT-Token zurück
-     * (wird nur in der E-Mail verwendet, nie persistiert).
+     * Findet ein Mitglied anhand der Nextcloud-User-ID.
      */
-    public function createPasswordReset(int $memberId, int $ttlSeconds, ?string $ip): string
+    public function findByNextcloudId(string $ncUserId): ?array
     {
-        $token     = bin2hex(random_bytes(32));
-        $tokenHash = hash('sha256', $token);
-        $expiresAt = date('Y-m-d H:i:s', time() + $ttlSeconds);
-
-        // Alte, noch offene Tokens dieses Mitglieds entwerten
-        $this->db->execute(
-            "DELETE FROM password_resets WHERE member_id = ? AND used_at IS NULL",
-            [$memberId]
+        return $this->db->fetchOne(
+            "SELECT id, name, email, is_admin, permission_level, nextcloud_user_id
+             FROM members WHERE nextcloud_user_id = ?",
+            [$ncUserId]
         );
-
-        $this->db->insert(
-            "INSERT INTO password_resets (member_id, token_hash, expires_at, requested_ip)
-             VALUES (?, ?, ?, ?)",
-            [$memberId, $tokenHash, $expiresAt, $ip]
-        );
-
-        return $token;
     }
 
     /**
-     * Prüft einen Klartext-Token und gibt bei Gültigkeit die zugehörige
-     * member_id zurück, sonst null (abgelaufen, schon benutzt, unbekannt).
+     * Verknüpft ein bestehendes Mitglied (gefunden über E-Mail) mit
+     * seiner Nextcloud-User-ID.
      */
-    public function findValidPasswordReset(string $token): ?int
+    public function linkNextcloudId(int $memberId, string $ncUserId): void
     {
-        $tokenHash = hash('sha256', $token);
-
-        $row = $this->db->fetchOne(
-            "SELECT member_id FROM password_resets
-             WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW()",
-            [$tokenHash]
+        $this->db->execute(
+            "UPDATE members SET nextcloud_user_id = ? WHERE id = ?",
+            [$ncUserId, $memberId]
         );
-
-        return $row ? (int) $row['member_id'] : null;
     }
 
     /**
-     * Markiert den Token als benutzt (Einmal-Verwendung).
+     * Legt ein neues Mitglied an, das sich erstmals per Nextcloud
+     * angemeldet hat. Kein lokales Passwort nötig — Login läuft
+     * ausschließlich über Nextcloud-SSO.
      */
-    public function consumePasswordReset(string $token): void
+    public function createFromNextcloud(string $name, string $email, string $ncUserId): int
     {
-        $tokenHash = hash('sha256', $token);
-        $this->db->execute(
-            "UPDATE password_resets SET used_at = NOW() WHERE token_hash = ?",
-            [$tokenHash]
-        );
+        return $this->db->insert("
+            INSERT INTO members (name, email, password_hash, is_admin, permission_level, nextcloud_user_id)
+            VALUES (?, ?, ?, 0, 'member', ?)
+        ", [
+            $name,
+            strtolower(trim($email)),
+            // Kein Passwort-Login möglich — zufälliger, nie genutzter Hash.
+            password_hash(bin2hex(random_bytes(32)), PASSWORD_BCRYPT),
+            $ncUserId,
+        ]);
     }
 }

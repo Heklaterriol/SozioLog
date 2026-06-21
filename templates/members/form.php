@@ -48,15 +48,11 @@ function mfCls(array $errors, string $field): string {
             </div>
 
             <div class="form-field">
-                <label class="form-label <?= !$isEdit ? 'form-label--required' : '' ?>" for="password">
-                    Passwort<?= $isEdit ? ' <span class="text-muted" style="font-weight:400">(leer = nicht ändern)</span>' : '' ?>
-                </label>
-                <input type="password" id="password" name="password"
-                       class="form-input<?= mfCls($errors, 'password') ?>"
-                       autocomplete="new-password"
-                       <?= !$isEdit ? 'required' : '' ?>>
-                <?= mfErr($errors, 'password') ?>
-                <span class="form-hint">Mindestens 8 Zeichen.</span>
+                <span class="form-hint">
+                    Die Anmeldung erfolgt per Nextcloud — sobald sich diese Person mit
+                    derselben E-Mail-Adresse über Nextcloud anmeldet, wird ihr Konto
+                    automatisch verknüpft.
+                </span>
             </div>
 
             <?php if (!empty($isAdmin)): ?>

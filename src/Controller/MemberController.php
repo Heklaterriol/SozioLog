@@ -98,7 +98,6 @@ class MemberController extends BaseController
         $data = [
             'name'             => $this->inputString('name'),
             'email'            => strtolower(trim($this->inputString('email'))),
-            'password'         => $this->inputString('password'),
             // Berechtigungsstufe darf nur ein Admin vergeben — Mitglieder
             // legen immer auf der Standardstufe 'member' an.
             'permission_level' => $perm->isAdmin()
@@ -187,7 +186,6 @@ class MemberController extends BaseController
         $data = [
             'name'     => $this->inputString('name'),
             'email'    => strtolower(trim($this->inputString('email'))),
-            'password' => $this->inputString('password'),   // leer = nicht ändern
             // Berechtigungsstufe darf nur ein Admin ändern — sonst bleibt
             // die bisherige Stufe der Person unverändert.
             'permission_level' => $perm->canChangePermissionLevel()
@@ -209,11 +207,6 @@ class MemberController extends BaseController
         }
 
         $this->members->update($id, $data);
-
-        // Passwort nur ändern wenn angegeben
-        if ($data['password'] !== '') {
-            $this->members->updatePassword($id, $data['password']);
-        }
 
         $this->flash('success', 'Person aktualisiert.');
         $this->redirect('/members/' . $id);
@@ -344,15 +337,6 @@ class MemberController extends BaseController
             $errors['email'] = 'Ungültige E-Mail-Adresse.';
         } elseif ($this->members->emailExists($data['email'], $excludeId)) {
             $errors['email'] = 'Diese E-Mail-Adresse ist bereits vergeben.';
-        }
-
-        // Nur bei Neuanlage: Passwort ist Pflicht
-        if ($excludeId === null && empty($data['password'])) {
-            $errors['password'] = 'Passwort ist erforderlich.';
-        }
-
-        if (!empty($data['password']) && strlen($data['password']) < 8) {
-            $errors['password'] = 'Passwort muss mindestens 8 Zeichen haben.';
         }
 
         return $errors;
